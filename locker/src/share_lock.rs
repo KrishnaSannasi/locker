@@ -97,3 +97,72 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &mut L {
         L::shr_unlock(self)
     }
 }
+
+#[cfg(any(feature="std", feature="alloc"))]
+unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Box<L> {
+    #[inline(always)]
+    fn shr_lock(&self) {
+        L::shr_lock(self)
+    }
+
+    #[inline(always)]
+    fn shr_try_lock(&self) -> bool {
+        L::shr_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_split(&self) {
+        L::shr_split(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_unlock(&self) {
+        L::shr_unlock(self)
+    }
+}
+
+#[cfg(any(feature="std", feature="alloc"))]
+unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Arc<L> {
+    #[inline(always)]
+    fn shr_lock(&self) {
+        L::shr_lock(self)
+    }
+
+    #[inline(always)]
+    fn shr_try_lock(&self) -> bool {
+        L::shr_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_split(&self) {
+        L::shr_split(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_unlock(&self) {
+        L::shr_unlock(self)
+    }
+}
+
+#[cfg(any(feature="std", feature="alloc"))]
+unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Rc<L> {
+    #[inline(always)]
+    fn shr_lock(&self) {
+        L::shr_lock(self)
+    }
+
+    #[inline(always)]
+    fn shr_try_lock(&self) -> bool {
+        L::shr_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_split(&self) {
+        L::shr_split(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_unlock(&self) {
+        L::shr_unlock(self)
+    }
+}

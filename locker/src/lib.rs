@@ -3,6 +3,26 @@
 #[cfg(not(any(feature="std", feature="parking_lot_core")))]
 extern crate core as std;
 
+#[cfg(all(
+    feature="alloc",
+    not(feature="std")
+))]
+extern crate alloc;
+
+mod alloc_prelude {
+    cfg_if::cfg_if! {
+        if #[cfg(feature="std")] {
+            pub use std::boxed::Box;
+            pub use std::sync::Arc;
+            pub use std::rc::Rc;
+        } else if #[cfg(feature="alloc")] {
+            pub use alloc::boxed::Box;
+            pub use alloc::sync::Arc;
+            pub use alloc::rc::Rc;
+        }
+    }
+}
+
 pub unsafe trait RawLockInfo {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self;

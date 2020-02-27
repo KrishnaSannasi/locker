@@ -8,12 +8,13 @@ edition = "2018"
 
 [features]
 
-default = ['extra']
-# default = ['parking_lot_core', 'extra', 'std']
+default = ['parking_lot_core', 'extra', 'std']
 extra = []
 std = []
+alloc = []
 
 [dependencies]
+cfg-if = '*'
 
 [dependencies.parking_lot_core]
 version = '*'
