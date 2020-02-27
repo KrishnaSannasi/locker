@@ -6,6 +6,9 @@ use crate::unique_lock::{RawUniqueLockExt, UniqueGuard};
 pub mod global;
 
 #[cfg(feature = "extra")]
+pub mod spin;
+
+#[cfg(feature = "extra")]
 pub mod local_simple;
 #[cfg(feature = "parking_lot_core")]
 pub mod simple;

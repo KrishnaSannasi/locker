@@ -1,3 +1,8 @@
+#![cfg_attr(not(any(feature="std", feature="parking_lot_core")), no_std)]
+
+#[cfg(not(any(feature="std", feature="parking_lot_core")))]
+extern crate core as std;
+
 pub unsafe trait RawLockInfo {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self;

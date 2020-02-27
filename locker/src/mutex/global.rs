@@ -50,7 +50,11 @@ impl Global {
     }
 }
 
+#[cfg(feature="parking_lot_core")]
 type Lock = crate::mutex::simple::RawLock;
+
+#[cfg(not(feature = "parking_lot_core"))]
+type Lock = crate::mutex::spin::RawLock;
 
 unsafe impl RawLockInfo for Global {
     const INIT: Self = Self;

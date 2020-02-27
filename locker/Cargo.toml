@@ -8,8 +8,10 @@ edition = "2018"
 
 [features]
 
-default = ['parking_lot_core', 'extra']
+default = ['extra']
+# default = ['parking_lot_core', 'extra', 'std']
 extra = []
+std = []
 
 [dependencies]
 
