@@ -63,3 +63,49 @@ pub unsafe trait SplittableUniqueLock: RawUniqueLock {
     /// is called
     unsafe fn uniq_split(&self);
 }
+
+unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &L {
+    #[inline(always)]
+    fn uniq_lock(&self) {
+        L::uniq_lock(self)
+    }
+
+    #[inline(always)]
+    fn uniq_try_lock(&self) -> bool {
+        L::uniq_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_unlock(&self) {
+        L::uniq_unlock(self)
+    }
+}
+
+unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &mut L {
+    #[inline(always)]
+    fn uniq_lock(&self) {
+        L::uniq_lock(self)
+    }
+
+    #[inline(always)]
+    fn uniq_try_lock(&self) -> bool {
+        L::uniq_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_unlock(&self) {
+        L::uniq_unlock(self)
+    }
+}
+
+unsafe impl<L: ?Sized + SplittableUniqueLock> SplittableUniqueLock for &L {
+    unsafe fn uniq_split(&self) {
+        L::uniq_split(self)
+    }
+}
+
+unsafe impl<L: ?Sized + SplittableUniqueLock> SplittableUniqueLock for &mut L {
+    unsafe fn uniq_split(&self) {
+        L::uniq_split(self)
+    }
+}

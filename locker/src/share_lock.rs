@@ -53,3 +53,47 @@ pub unsafe trait RawShareLock {
     /// This Share lock must be locked before calling this function
     unsafe fn shr_unlock(&self);
 }
+
+unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &L {
+    #[inline(always)]
+    fn shr_lock(&self) {
+        L::shr_lock(self)
+    }
+
+    #[inline(always)]
+    fn shr_try_lock(&self) -> bool {
+        L::shr_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_split(&self) {
+        L::shr_split(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_unlock(&self) {
+        L::shr_unlock(self)
+    }
+}
+
+unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &mut L {
+    #[inline(always)]
+    fn shr_lock(&self) {
+        L::shr_lock(self)
+    }
+
+    #[inline(always)]
+    fn shr_try_lock(&self) -> bool {
+        L::shr_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_split(&self) {
+        L::shr_split(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_unlock(&self) {
+        L::shr_unlock(self)
+    }
+}
