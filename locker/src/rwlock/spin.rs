@@ -90,6 +90,11 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     unsafe fn uniq_unlock(&self) {
         self.state.store(0, Ordering::Release);
     }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {
+        // there are never any parked threads in a spin lock
+    }
 }
 
 unsafe impl crate::share_lock::RawShareLock for RawLock {
@@ -139,5 +144,10 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
     unsafe fn shr_unlock(&self) {
         let state = self.state.fetch_sub(1, Ordering::Release);
         debug_assert_ne!(state, 0, "Can't unlock an unlocked local lock");
+    }
+
+    #[inline]
+    unsafe fn shr_bump(&self) {
+        // there are never any parked threads in a spin lock
     }
 }

@@ -41,13 +41,13 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
         !self.lock.replace(true)
     }
 
-    /// # Safety
-    ///
-    /// This exclusive lock must be locked before calling this function
     #[inline]
     unsafe fn uniq_unlock(&self) {
         debug_assert!(self.lock.get(), "tried to unlock an unlocked uniq lock");
 
         self.lock.set(false);
     }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {}
 }

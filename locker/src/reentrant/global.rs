@@ -1,4 +1,4 @@
-use crate::share_lock::RawShareLock;
+use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -97,19 +97,41 @@ unsafe impl RawLockInfo for Global {
 }
 
 unsafe impl RawShareLock for Global {
+    #[inline]
     fn shr_lock(&self) {
         GLOBAL[self.addr()].shr_lock()
     }
 
+    #[inline]
     fn shr_try_lock(&self) -> bool {
         GLOBAL[self.addr()].shr_try_lock()
     }
 
+    #[inline]
     unsafe fn shr_split(&self) {
         GLOBAL[self.addr()].shr_split()
     }
 
+    #[inline]
     unsafe fn shr_unlock(&self) {
         GLOBAL[self.addr()].shr_unlock()
+    }
+    
+    #[inline]
+    unsafe fn shr_bump(&self) {
+        GLOBAL[self.addr()].shr_bump()
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl RawShareLockFair for Global {
+    #[inline]
+    unsafe fn shr_unlock_fair(&self) {
+        GLOBAL[self.addr()].shr_unlock_fair()
+    }
+
+    #[inline]    
+    unsafe fn shr_bump_fair(&self) {
+        GLOBAL[self.addr()].shr_bump_fair()
     }
 }

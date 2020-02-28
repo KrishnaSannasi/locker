@@ -55,6 +55,9 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
 
         self.lock_count.set(self.lock_count.get() - 1);
     }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {}
 }
 
 unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {

@@ -1,4 +1,5 @@
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
+use crate::exclusive_lock::RawExclusiveLock;
 
 // UnparkToken used to indicate that that the target thread should attempt to
 // lock the mutex again as soon as it is unparked.
@@ -150,6 +151,12 @@ impl RawLock {
             parking_lot_core::unpark_one(addr, callback);
         }
     }
+
+    #[cold]
+    fn bump_slow(&self, force_fair: bool) {
+        self.unlock_slow(force_fair);
+        self.uniq_lock();
+    }
 }
 
 unsafe impl crate::mutex::RawMutex for RawLock {}
@@ -159,7 +166,7 @@ unsafe impl crate::RawLockInfo for RawLock {
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl RawExclusiveLock for RawLock {
     #[inline]
     fn uniq_lock(&self) {
         if !self.uniq_try_lock() {
@@ -183,9 +190,6 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
                 .is_ok()
     }
 
-    /// # Safety
-    ///
-    /// This exclusive lock must be locked before calling this function
     #[inline]
     unsafe fn uniq_unlock(&self) {
         if self
@@ -194,6 +198,33 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
             .is_err()
         {
             self.unlock_slow(false);
+        }
+    }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {
+        if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
+            self.bump_slow(false);
+        }
+    }
+}
+
+unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
+    #[inline]
+    unsafe fn uniq_unlock_fair(&self) {
+        if self
+            .state
+            .compare_exchange(Self::LOCK_BIT, 0, Ordering::Release, Ordering::Relaxed)
+            .is_err()
+        {
+            self.unlock_slow(true);
+        }
+    }
+
+    #[inline]
+    unsafe fn uniq_bump_fair(&self) {
+        if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
+            self.bump_slow(true);
         }
     }
 }

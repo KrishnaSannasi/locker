@@ -1,5 +1,8 @@
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
 
+use crate::exclusive_lock::RawExclusiveLock;
+use crate::share_lock::RawShareLock;
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
@@ -374,6 +377,54 @@ impl RawLock {
             }
         }
     }
+
+    #[inline]
+    fn try_unlock_fast(&self, uniq_bit: usize) -> bool {
+        // if this is the final lock, and there are no parked threads
+        if self
+            .state
+            .compare_exchange(
+                LOCK_BIT | uniq_bit | INC,
+                0,
+                Ordering::Release,
+                Ordering::Relaxed,
+            )
+            .is_ok()
+        {
+            return true;
+        }
+
+        let mut state = self.state.load(Ordering::Acquire);
+
+        // if not final lock
+        while state >= INC * 2 {
+            if let Err(x) = self.state.compare_exchange_weak(
+                state,
+                state - INC,
+                Ordering::Release,
+                Ordering::Relaxed,
+            ) {
+                state = x;
+            } else {
+                // if we were able to decrement, then we released our lock
+                return true;
+            }
+        }
+
+        false
+    }
+
+    #[cold]
+    fn uniq_bump_slow(&self, force_fair: bool) {
+        self.uniq_unlock_slow(force_fair);
+        self.uniq_lock();
+    }
+
+    #[cold]
+    fn shr_bump_slow(&self, force_fair: bool) {
+        self.shr_unlock_slow(force_fair);
+        self.shr_lock();
+    }
 }
 
 unsafe impl crate::mutex::RawMutex for RawLock {}
@@ -408,39 +459,34 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
 
     #[inline]
     unsafe fn uniq_unlock(&self) {
-        // if this is the final lock, and there are no parked threads
-        if self
-            .state
-            .compare_exchange(
-                LOCK_BIT | UNIQ_BIT | INC,
-                0,
-                Ordering::Release,
-                Ordering::Relaxed,
-            )
-            .is_ok()
-        {
-            return;
+        if !self.try_unlock_fast(UNIQ_BIT) {
+            // if there are parked threads
+            self.uniq_unlock_slow(false);
         }
+    }
 
-        let mut state = self.state.load(Ordering::Acquire);
-
-        // if not final lock
-        while state >= INC * 2 {
-            if let Err(x) = self.state.compare_exchange_weak(
-                state,
-                state - INC,
-                Ordering::Release,
-                Ordering::Relaxed,
-            ) {
-                state = x;
-            } else {
-                // if we were able to decrement, then we released our lock
-                return;
-            }
+    #[inline]
+    unsafe fn uniq_bump(&self) {
+        if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
+            self.uniq_bump_slow(false)
         }
+    }
+}
 
-        // if there are parked threads
-        self.uniq_unlock_slow(false);
+unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
+    #[inline]
+    unsafe fn uniq_unlock_fair(&self) {
+        if !self.try_unlock_fast(UNIQ_BIT) {
+            // if there are parked threads
+            self.uniq_unlock_slow(true);
+        }
+    }
+
+    #[inline]
+    unsafe fn uniq_bump_fair(&self) {
+        if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
+            self.uniq_bump_slow(true)
+        }
     }
 }
 
@@ -486,34 +532,34 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
 
     #[inline]
     unsafe fn shr_unlock(&self) {
-        // if this is the final lock, and there are no parked threads
-        if self
-            .state
-            .compare_exchange(LOCK_BIT | INC, 0, Ordering::Release, Ordering::Relaxed)
-            .is_ok()
-        {
-            return;
+        if !self.try_unlock_fast(0) {
+            // if there are parked threads
+            self.shr_unlock_slow(false);
         }
+    }
 
-        let mut state = self.state.load(Ordering::Acquire);
-
-        // if not final lock
-        while state >= INC * 2 {
-            if let Err(x) = self.state.compare_exchange_weak(
-                state,
-                state - INC,
-                Ordering::Release,
-                Ordering::Relaxed,
-            ) {
-                state = x;
-            } else {
-                // if we were able to decrement, then we released our lock
-                return;
-            }
+    #[inline]
+    unsafe fn shr_bump(&self) {
+        if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
+            self.shr_bump_slow(false)
         }
+    }
+}
 
-        // if there are parked threads
-        self.shr_unlock_slow(false);
+unsafe impl crate::share_lock::RawShareLockFair for RawLock {
+    #[inline]
+    unsafe fn shr_unlock_fair(&self) {
+        if !self.try_unlock_fast(0) {
+            // if there are parked threads
+            self.shr_unlock_slow(false);
+        }
+    }
+
+    #[inline]
+    unsafe fn shr_bump_fair(&self) {
+        if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
+            self.shr_bump_slow(false)
+        }
     }
 }
 

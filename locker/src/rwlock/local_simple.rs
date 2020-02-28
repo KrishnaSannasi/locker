@@ -56,6 +56,9 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     unsafe fn uniq_unlock(&self) {
         self.state.set(0);
     }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {}
 }
 
 unsafe impl crate::share_lock::RawShareLock for RawLock {
@@ -90,4 +93,7 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
         debug_assert!(!ovf, "Can't unlock an unlocked local lock");
         self.state.set(state);
     }
+
+    #[inline]
+    unsafe fn shr_bump(&self) {}
 }

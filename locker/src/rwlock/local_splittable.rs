@@ -70,6 +70,9 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
             self.state.set(state - Self::INC);
         }
     }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {}
 }
 
 unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
@@ -136,4 +139,7 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
             self.state.set(state - Self::INC);
         }
     }
+
+    #[inline]
+    unsafe fn shr_bump(&self) {}
 }

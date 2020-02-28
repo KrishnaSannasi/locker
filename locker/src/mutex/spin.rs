@@ -48,11 +48,13 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
             .is_ok()
     }
 
-    /// # Safety
-    ///
-    /// This exclusive lock must be locked before calling this function
     #[inline]
     unsafe fn uniq_unlock(&self) {
         self.lock.store(false, Ordering::Release);
+    }
+
+    #[inline]
+    unsafe fn uniq_bump(&self) {
+        // there are never any parked threads in a spin lock
     }
 }
