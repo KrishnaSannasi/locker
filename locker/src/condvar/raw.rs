@@ -23,6 +23,9 @@ pub struct RawCondvar<L> {
     lock: AtomicPtr<L>,
 }
 
+unsafe impl<L: Parkable + RawLockInfo + Sync> Send for RawCondvar<L> {}
+unsafe impl<L: Parkable + RawLockInfo + Sync> Sync for RawCondvar<L> {}
+
 impl<L> RawCondvar<L> {
     pub const fn new() -> Self {
         Self {

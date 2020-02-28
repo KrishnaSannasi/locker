@@ -37,16 +37,10 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
         }
     }
 
-    /// # Safety
-    ///
-    /// TODO
     pub unsafe fn raw(&self) -> &RawExclusiveGuard<'a, L> {
         &self.raw
     }
 
-    /// # Safety
-    ///
-    /// TODO
     pub unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
         &mut self.raw
     }

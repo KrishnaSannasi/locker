@@ -1,23 +1,9 @@
-use parking_lot_core::{
-    self, ParkResult, RequeueOp, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN,
-};
-
 use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLock};
 use crate::share_lock::{RawShareLock, ShareGuard};
 
 use crate::RawLockInfo;
 
-use std::ptr;
-use std::sync::atomic::{AtomicPtr, Ordering};
 use std::time::{Duration, Instant};
-
-// UnparkToken used to indicate that that the target thread should attempt to
-// lock the mutex again as soon as it is unparked.
-pub const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
-
-// UnparkToken used to indicate that the mutex is being handed off to the target
-// thread directly without unlocking it.
-pub const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 
 mod raw;
 pub use raw::RawCondvar;
