@@ -1,4 +1,4 @@
-use super::RawShareLock;
+use super::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
 pub type RawShareGuard<'a, L> = _RawShareGuard<'a, L, <L as RawLockInfo>::ShareGuardTraits>;
@@ -35,11 +35,38 @@ impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {
         }
     }
 
+    pub fn bump(&mut self) {
+        unsafe { self.lock.shr_bump(); }
+    }
+
+    pub fn unlocked<R>(&mut self, f: impl FnOnce() -> R) -> R {
+        unsafe { self.lock.shr_unlock(); }
+        defer!(self.lock.shr_lock());
+        f()
+    }
+
     /// # Safety
     ///
     /// TODO
     pub unsafe fn inner(&self) -> &L {
         self.lock
+    }
+}
+
+impl<L: RawShareLockFair + RawLockInfo> RawShareGuard<'_, L> {
+    pub fn unlock_fair(self) {
+        let g = std::mem::ManuallyDrop::new(self);
+        unsafe { g.lock.shr_unlock_fair(); }
+    }
+    
+    pub fn bump_fair(&mut self) {
+        unsafe { self.lock.shr_bump_fair(); }
+    }
+    
+    pub fn unlocked_fair<R>(&mut self, f: impl FnOnce() -> R) -> R {
+        unsafe { self.lock.shr_unlock_fair(); }
+        defer!(self.lock.shr_lock());
+        f()
     }
 }
 

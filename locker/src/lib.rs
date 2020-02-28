@@ -20,6 +20,12 @@ mod alloc_prelude {
     }
 }
 
+macro_rules! defer {
+    ($($inner:tt)*) => {
+        let _defer = crate::defer::Defer::new(|| $($inner)*);
+    };
+}
+
 pub unsafe trait RawLockInfo {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self;
@@ -62,6 +68,7 @@ impl<A: Sealed, B: Sealed> Sealed for (A, B) {}
 impl<A: Marker, B: Marker> Marker for (A, B) {}
 impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {}
 
+mod defer;
 pub mod mutex;
 pub mod once;
 pub mod reentrant;

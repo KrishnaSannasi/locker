@@ -1,4 +1,4 @@
-use super::{RawShareGuard, RawShareLock};
+use super::{RawShareGuard, RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -94,6 +94,28 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
             }
             Err(e) => Err(TryMapError(e, self)),
         }
+    }
+
+    pub fn bump(g: &mut Self) {
+        g.raw.bump()
+    }
+
+    pub fn unlocked<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
+        g.raw.unlocked(f)
+    }
+}
+
+impl<L: RawShareLockFair + RawLockInfo, T: ?Sized> ShareGuard<'_, L, T> {
+    pub fn unlock_fair(g: Self) {
+        g.raw.unlock_fair();
+    }
+    
+    pub fn bump_fair(g: &mut Self) {
+        g.raw.bump_fair();
+    }
+    
+    pub fn unlocked_fair<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
+        g.raw.unlocked_fair(f)
     }
 }
 

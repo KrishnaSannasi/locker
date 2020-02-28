@@ -1,4 +1,4 @@
-use super::{RawUniqueGuard, RawUniqueLock, SplittableUniqueLock};
+use super::{RawUniqueGuard, RawUniqueLock, RawUniqueLockFair, SplittableUniqueLock};
 use crate::RawLockInfo;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -104,6 +104,28 @@ impl<'a, L: SplittableUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L
             }
             Err(e) => Err(TryMapError(e, self)),
         }
+    }
+
+    pub fn bump(g: &mut Self) {
+        g.raw.bump()
+    }
+
+    pub fn unlocked<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
+        g.raw.unlocked(f)
+    }
+}
+
+impl<L: RawUniqueLockFair + RawLockInfo, T: ?Sized> UniqueGuard<'_, L, T> {
+    pub fn unlock_fair(g: Self) {
+        g.raw.unlock_fair();
+    }
+    
+    pub fn bump_fair(g: &mut Self) {
+        g.raw.bump_fair();
+    }
+    
+    pub fn unlocked_fair<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
+        g.raw.unlocked_fair(f)
     }
 }
 

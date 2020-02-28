@@ -1,4 +1,4 @@
-use super::{RawUniqueLock, SplittableUniqueLock};
+use super::{RawUniqueLock, RawUniqueLockFair, SplittableUniqueLock};
 use crate::RawLockInfo;
 
 pub type RawUniqueGuard<'a, L> = _RawUniqueGuard<'a, L, <L as RawLockInfo>::UniqueGuardTraits>;
@@ -35,6 +35,16 @@ impl<'a, L: RawUniqueLock + RawLockInfo> RawUniqueGuard<'a, L> {
         }
     }
 
+    pub fn bump(&mut self) {
+        unsafe { self.lock.uniq_bump(); }
+    }
+
+    pub fn unlocked<R>(&mut self, f: impl FnOnce() -> R) -> R {
+        unsafe { self.lock.uniq_unlock(); }
+        defer!(self.lock.uniq_lock());
+        f()
+    }
+
     /// # Safety
     ///
     /// TODO
@@ -43,7 +53,24 @@ impl<'a, L: RawUniqueLock + RawLockInfo> RawUniqueGuard<'a, L> {
     }
 }
 
-impl<'a, L: SplittableUniqueLock + RawLockInfo> Clone for RawUniqueGuard<'a, L> {
+impl<L: RawUniqueLockFair + RawLockInfo> RawUniqueGuard<'_, L> {
+    pub fn unlock_fair(self) {
+        let g = std::mem::ManuallyDrop::new(self);
+        unsafe { g.lock.uniq_unlock_fair(); }
+    }
+    
+    pub fn bump_fair(&mut self) {
+        unsafe { self.lock.uniq_bump_fair(); }
+    }
+    
+    pub fn unlocked_fair<R>(&mut self, f: impl FnOnce() -> R) -> R {
+        unsafe { self.lock.uniq_unlock_fair(); }
+        defer!(self.lock.uniq_lock());
+        f()
+    }
+}
+
+impl<L: SplittableUniqueLock + RawLockInfo> Clone for RawUniqueGuard<'_, L> {
     fn clone(&self) -> Self {
         unsafe {
             self.lock.uniq_split();

@@ -47,6 +47,14 @@ pub unsafe trait RawUniqueLock {
     /// * This lock must be uniq locked before calling this function
     /// * the lock must not have been moved since it was locked
     unsafe fn uniq_unlock(&self);
+
+    /// # Safety
+    ///
+    /// This uniq lock must be locked before calling this function
+    unsafe fn uniq_bump(&self) {
+        self.uniq_unlock();
+        self.uniq_lock();
+    }
 }
 
 /// # Safety
@@ -61,6 +69,15 @@ pub unsafe trait SplittableUniqueLock: RawUniqueLock {
     /// * the caller must own a unique lock
     /// * the lock must not have been moved since it was locked
     unsafe fn uniq_split(&self);
+}
+
+pub unsafe trait RawUniqueLockFair: RawUniqueLock {
+    unsafe fn uniq_unlock_fair(&self);
+    
+    unsafe fn uniq_bump_fair(&self) {
+        self.uniq_unlock_fair();
+        self.uniq_lock();
+    }
 }
 
 unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &L {
@@ -78,6 +95,11 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &L {
     unsafe fn uniq_unlock(&self) {
         L::uniq_unlock(self)
     }
+
+    #[inline(always)]
+    unsafe fn uniq_bump(&self) {
+        L::uniq_bump(self)
+    }
 }
 
 unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &mut L {
@@ -94,6 +116,11 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &mut L {
     #[inline(always)]
     unsafe fn uniq_unlock(&self) {
         L::uniq_unlock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump(&self) {
+        L::uniq_bump(self)
     }
 }
 
@@ -113,6 +140,11 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::B
     unsafe fn uniq_unlock(&self) {
         L::uniq_unlock(self)
     }
+
+    #[inline(always)]
+    unsafe fn uniq_bump(&self) {
+        L::uniq_bump(self)
+    }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -131,6 +163,11 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::A
     unsafe fn uniq_unlock(&self) {
         L::uniq_unlock(self)
     }
+
+    #[inline(always)]
+    unsafe fn uniq_bump(&self) {
+        L::uniq_bump(self)
+    }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -148,6 +185,11 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::R
     #[inline(always)]
     unsafe fn uniq_unlock(&self) {
         L::uniq_unlock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump(&self) {
+        L::uniq_bump(self)
     }
 }
 

@@ -44,14 +44,31 @@ pub unsafe trait RawShareLock {
 
     /// # Safety
     ///
-    /// * the caller must own a share lock
+    /// * the caller must own a shr lock
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_split(&self);
 
     /// # Safety
     ///
-    /// This Share lock must be locked before calling this function
+    /// This shr lock must be locked before calling this function
     unsafe fn shr_unlock(&self);
+
+    /// # Safety
+    ///
+    /// This shr lock must be locked before calling this function
+    unsafe fn shr_bump(&self) {
+        self.shr_unlock();
+        self.shr_lock();
+    }
+}
+
+pub unsafe trait RawShareLockFair: RawShareLock {
+    unsafe fn shr_unlock_fair(&self);
+    
+    unsafe fn shr_bump_fair(&self) {
+        self.shr_unlock_fair();
+        self.shr_lock();
+    }
 }
 
 unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &L {
@@ -74,6 +91,11 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &L {
     unsafe fn shr_unlock(&self) {
         L::shr_unlock(self)
     }
+
+    #[inline(always)]
+    unsafe fn shr_bump(&self) {
+        L::shr_bump(self)
+    }
 }
 
 unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &mut L {
@@ -95,6 +117,11 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &mut L {
     #[inline(always)]
     unsafe fn shr_unlock(&self) {
         L::shr_unlock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_bump(&self) {
+        L::shr_bump(self)
     }
 }
 
@@ -119,6 +146,11 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Box
     unsafe fn shr_unlock(&self) {
         L::shr_unlock(self)
     }
+
+    #[inline(always)]
+    unsafe fn shr_bump(&self) {
+        L::shr_bump(self)
+    }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -142,6 +174,11 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Arc
     unsafe fn shr_unlock(&self) {
         L::shr_unlock(self)
     }
+
+    #[inline(always)]
+    unsafe fn shr_bump(&self) {
+        L::shr_bump(self)
+    }
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -164,5 +201,10 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Rc<
     #[inline(always)]
     unsafe fn shr_unlock(&self) {
         L::shr_unlock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn shr_bump(&self) {
+        L::shr_bump(self)
     }
 }
