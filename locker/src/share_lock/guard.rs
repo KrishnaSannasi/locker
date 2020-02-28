@@ -40,8 +40,15 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
     /// # Safety
     ///
     /// TODO
-    pub unsafe fn raw(&self) -> &RawShareGuard<L> {
+    pub unsafe fn raw(&self) -> &RawShareGuard<'a, L> {
         &self.raw
+    }
+
+    /// # Safety
+    ///
+    /// TODO
+    pub unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
+        &mut self.raw
     }
 
     pub fn map<F: FnOnce(&T) -> &U, U: ?Sized>(self, f: F) -> ShareGuard<'a, L, U, Mapped> {
