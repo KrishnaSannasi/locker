@@ -93,6 +93,14 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     }
 }
 
+pub unsafe trait RawExclusiveLockDowngrade: RawExclusiveLock {
+    /// # Safety
+    ///
+    /// * the caller must own a exclusive lock
+    /// * the lock must not have been moved since it was locked
+    unsafe fn downgrade(&self);
+}
+
 unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &L {
     #[inline(always)]
     fn uniq_lock(&self) {

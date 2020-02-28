@@ -97,6 +97,13 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 }
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for RawLock {
+    #[inline]
+    unsafe fn downgrade(&self) {
+        self.state.store(1, Ordering::Relaxed);
+    }
+}
+
 unsafe impl crate::share_lock::RawShareLock for RawLock {
     #[inline]
     fn shr_lock(&self) {

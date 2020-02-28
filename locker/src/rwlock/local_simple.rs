@@ -97,3 +97,9 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
     #[inline]
     unsafe fn shr_bump(&self) {}
 }
+
+unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for RawLock {
+    unsafe fn downgrade(&self) {
+        self.state.set(1);
+    }
+}
