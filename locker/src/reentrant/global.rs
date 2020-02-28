@@ -4,25 +4,25 @@ use crate::RawLockInfo;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Global;
 
-pub type ReMutex<T> = crate::mutex::Mutex<Global, T>;
+pub type ReentrantMutex<T> = crate::reentrant::ReentrantMutex<Global, T>;
 
 impl Global {
-    pub const fn remutex<T>(value: T) -> ReMutex<T> {
-        unsafe { ReMutex::from_raw_parts(Self, value) }
+    pub const fn remutex<T>(value: T) -> ReentrantMutex<T> {
+        unsafe { ReentrantMutex::from_raw_parts(Self, value) }
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
-    pub fn remutex_from_mut<T: ?Sized>(value: &mut T) -> &mut ReMutex<T> {
+    pub fn remutex_from_mut<T: ?Sized>(value: &mut T) -> &mut ReentrantMutex<T> {
         unsafe { std::mem::transmute(value) }
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
-    pub fn remutex_from_mut_slice<T>(value: &mut [T]) -> &mut [ReMutex<T>] {
+    pub fn remutex_from_mut_slice<T>(value: &mut [T]) -> &mut [ReentrantMutex<T>] {
         unsafe { std::mem::transmute(value) }
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
-    pub fn remutex_transpose<T>(value: &mut ReMutex<[T]>) -> &mut [ReMutex<T>] {
+    pub fn remutex_transpose<T>(value: &mut ReentrantMutex<[T]>) -> &mut [ReentrantMutex<T>] {
         unsafe { std::mem::transmute(value) }
     }
 
@@ -39,7 +39,7 @@ impl Global {
     }
 
     #[inline]
-    pub fn will_remutex_contend<T: ?Sized, U: ?Sized>(a: &ReMutex<T>, b: &ReMutex<U>) -> bool {
+    pub fn will_remutex_contend<T: ?Sized, U: ?Sized>(a: &ReentrantMutex<T>, b: &ReentrantMutex<U>) -> bool {
         unsafe { a.raw().addr() == b.raw().addr() }
     }
 }
