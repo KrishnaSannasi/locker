@@ -1,5 +1,5 @@
-use super::{RawExclusiveLock, RawExclusiveLockFair, SplittableExclusiveLock};
-use crate::RawLockInfo;
+use super::{RawExclusiveLock, RawExclusiveLockFair, RawExclusiveLockDowngrade, SplittableExclusiveLock};
+use crate::{RawLockInfo, Inhabitted};
 
 pub type RawExclusiveGuard<'a, L> =
     _RawExclusiveGuard<'a, L, <L as RawLockInfo>::ExclusiveGuardTraits>;
@@ -14,28 +14,33 @@ impl<'a, L: RawExclusiveLock, Tr> Drop for _RawExclusiveGuard<'_, L, Tr> {
     }
 }
 
-impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
+impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L>
+where
+    L::ExclusiveGuardTraits: Inhabitted,
+{
     /// # Safety
     ///
     /// The exclusive lock must be held
-    pub unsafe fn from_raw_parts(lock: &'a L, _traits: L::ExclusiveGuardTraits) -> Self {
-        Self { lock, _traits }
+    pub unsafe fn from_raw(lock: &'a L) -> Self {
+        Self { lock, _traits: Inhabitted::INIT }
     }
 
-    pub fn new(lock: &'a L, _traits: L::ExclusiveGuardTraits) -> Self {
+    pub fn new(lock: &'a L) -> Self {
         lock.uniq_lock();
 
-        unsafe { Self::from_raw_parts(lock, _traits) }
+        unsafe { Self::from_raw(lock) }
     }
 
-    pub fn try_new(lock: &'a L, _traits: L::ExclusiveGuardTraits) -> Option<Self> {
+    pub fn try_new(lock: &'a L) -> Option<Self> {
         if lock.uniq_try_lock() {
-            unsafe { Some(Self::from_raw_parts(lock, _traits)) }
+            unsafe { Some(Self::from_raw(lock)) }
         } else {
             None
         }
     }
+}
 
+impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
     pub fn bump(&mut self) {
         unsafe {
             self.lock.uniq_bump();
@@ -81,11 +86,27 @@ impl<L: RawExclusiveLockFair + RawLockInfo> RawExclusiveGuard<'_, L> {
     }
 }
 
+impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo> RawExclusiveGuard<'a, L>
+where
+    L::ShareGuardTraits: Inhabitted,
+{
+    pub fn downgrade(self) -> crate::share_lock::RawShareGuard<'a, L> {
+        let g = std::mem::ManuallyDrop::new(self);
+        unsafe {
+            g.lock.downgrade();
+            crate::share_lock::RawShareGuard::from_raw(g.lock)
+        }
+    }
+}
+
 impl<L: SplittableExclusiveLock + RawLockInfo> Clone for RawExclusiveGuard<'_, L> {
     fn clone(&self) -> Self {
         unsafe {
             self.lock.uniq_split();
-            RawExclusiveGuard::from_raw_parts(self.lock, self._traits)
+            RawExclusiveGuard {
+                lock: self.lock,
+                _traits: self._traits,
+            }
         }
     }
 }

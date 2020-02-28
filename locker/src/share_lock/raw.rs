@@ -1,5 +1,5 @@
 use super::{RawShareLock, RawShareLockFair};
-use crate::RawLockInfo;
+use crate::{RawLockInfo, Inhabitted};
 
 pub type RawShareGuard<'a, L> = _RawShareGuard<'a, L, <L as RawLockInfo>::ShareGuardTraits>;
 pub struct _RawShareGuard<'a, L: RawShareLock, Tr> {
@@ -13,28 +13,33 @@ impl<'a, L: RawShareLock, Tr> Drop for _RawShareGuard<'_, L, Tr> {
     }
 }
 
-impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {
+impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L>
+where
+    L::ShareGuardTraits: Inhabitted,
+{
     /// # Safety
     ///
     /// The share lock must be held
-    pub unsafe fn from_raw_parts(lock: &'a L, _traits: L::ShareGuardTraits) -> Self {
-        Self { lock, _traits }
+    pub unsafe fn from_raw(lock: &'a L) -> Self {
+        Self { lock, _traits: Inhabitted::INIT }
     }
 
-    pub fn new(lock: &'a L, _traits: L::ShareGuardTraits) -> Self {
+    pub fn new(lock: &'a L) -> Self {
         lock.shr_lock();
 
-        unsafe { Self::from_raw_parts(lock, _traits) }
+        unsafe { Self::from_raw(lock) }
     }
 
-    pub fn try_new(lock: &'a L, _traits: L::ShareGuardTraits) -> Option<Self> {
+    pub fn try_new(lock: &'a L) -> Option<Self> {
         if lock.shr_try_lock() {
-            unsafe { Some(Self::from_raw_parts(lock, _traits)) }
+            unsafe { Some(Self::from_raw(lock)) }
         } else {
             None
         }
     }
+}
 
+impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {
     pub fn bump(&mut self) {
         unsafe {
             self.lock.shr_bump();
@@ -84,7 +89,10 @@ impl<'a, L: RawShareLock + RawLockInfo> Clone for RawShareGuard<'a, L> {
     fn clone(&self) -> Self {
         unsafe {
             self.lock.shr_split();
-            RawShareGuard::from_raw_parts(self.lock, self._traits)
+            RawShareGuard {
+                lock: self.lock,
+                _traits: self._traits,
+            }
         }
     }
 }

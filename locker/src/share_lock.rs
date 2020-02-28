@@ -5,27 +5,6 @@ pub mod raw;
 pub use guard::{MappedShareGuard, ShareGuard};
 pub use raw::RawShareGuard;
 
-use crate::RawLockInfo;
-
-pub trait RawShareLockExt: RawShareLock + RawLockInfo + Sized {
-    fn raw_shr_lock(&self) -> RawShareGuard<Self>;
-
-    fn try_raw_shr_lock(&self) -> Option<RawShareGuard<Self>>;
-}
-
-impl<L: RawShareLock + RawLockInfo> RawShareLockExt for L
-where
-    Self::ShareGuardTraits: crate::Inhabitted,
-{
-    fn raw_shr_lock(&self) -> RawShareGuard<Self> {
-        RawShareGuard::new(self, unsafe { std::mem::zeroed() })
-    }
-
-    fn try_raw_shr_lock(&self) -> Option<RawShareGuard<Self>> {
-        RawShareGuard::try_new(self, unsafe { std::mem::zeroed() })
-    }
-}
-
 /// # Safety
 ///
 /// * `shr_unlock` must be called `n` times before `uniq_lock`,

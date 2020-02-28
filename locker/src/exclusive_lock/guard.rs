@@ -1,4 +1,4 @@
-use super::{RawExclusiveGuard, RawExclusiveLock, RawExclusiveLockFair, SplittableExclusiveLock};
+use super::{RawExclusiveGuard, RawExclusiveLock, RawExclusiveLockFair, SplittableExclusiveLock, RawExclusiveLockDowngrade};
 use crate::RawLockInfo;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -29,7 +29,7 @@ where
 }
 
 impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
-    pub unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: &'a mut T) -> Self {
+    pub unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: *mut T) -> Self {
         Self {
             raw,
             value,
@@ -141,6 +141,20 @@ impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'_, L,
 
     pub fn unlocked_fair<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
         g.raw.unlocked_fair(f)
+    }
+}
+
+impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St>
+where
+    L::ShareGuardTraits: crate::Inhabitted,
+{
+    pub fn downgrade(g: Self) -> crate::share_lock::ShareGuard<'a, L, T, St> {
+        unsafe {
+            crate::share_lock::ShareGuard::from_raw_parts(
+                g.raw.downgrade(),
+                g.value
+            )
+        }
     }
 }
 

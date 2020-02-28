@@ -40,11 +40,15 @@ mod private {
 }
 
 pub trait Marker: Copy + Sealed {}
-pub trait Inhabitted: Marker {}
+pub trait Inhabitted: Marker {
+    const INIT: Self;
+}
 
 impl Sealed for () {}
 impl Marker for () {}
-impl Inhabitted for () {}
+impl Inhabitted for () {
+    const INIT: Self = ();
+}
 impl Sealed for std::convert::Infallible {}
 impl Marker for std::convert::Infallible {}
 
@@ -58,15 +62,21 @@ unsafe impl Send for NoSync {}
 
 impl Sealed for NoSend {}
 impl Marker for NoSend {}
-impl Inhabitted for NoSend {}
+impl Inhabitted for NoSend {
+    const INIT: Self = Self(std::marker::PhantomData);
+}
 
 impl Sealed for NoSync {}
 impl Marker for NoSync {}
-impl Inhabitted for NoSync {}
+impl Inhabitted for NoSync {
+    const INIT: Self = Self(std::marker::PhantomData);
+}
 
 impl<A: Sealed, B: Sealed> Sealed for (A, B) {}
 impl<A: Marker, B: Marker> Marker for (A, B) {}
-impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {}
+impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {
+    const INIT: Self = (A::INIT, B::INIT);
+}
 
 mod defer;
 pub mod exclusive_lock;

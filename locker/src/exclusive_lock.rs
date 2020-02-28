@@ -5,27 +5,6 @@ pub mod raw;
 pub use guard::{ExclusiveGuard, MappedExclusiveGuard};
 pub use raw::RawExclusiveGuard;
 
-use crate::RawLockInfo;
-
-pub trait RawExclusiveLockExt: RawExclusiveLock + RawLockInfo + Sized {
-    fn raw_uniq_lock(&self) -> RawExclusiveGuard<Self>;
-
-    fn try_raw_uniq_lock(&self) -> Option<RawExclusiveGuard<Self>>;
-}
-
-impl<L: RawExclusiveLock + RawLockInfo> RawExclusiveLockExt for L
-where
-    Self::ExclusiveGuardTraits: crate::Inhabitted,
-{
-    fn raw_uniq_lock(&self) -> RawExclusiveGuard<Self> {
-        RawExclusiveGuard::new(self, unsafe { std::mem::zeroed() })
-    }
-
-    fn try_raw_uniq_lock(&self) -> Option<RawExclusiveGuard<Self>> {
-        RawExclusiveGuard::try_new(self, unsafe { std::mem::zeroed() })
-    }
-}
-
 /// # Safety
 ///
 /// * `uniq_unlock` must be called before before `uniq_lock`,
@@ -93,7 +72,7 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     }
 }
 
-pub unsafe trait RawExclusiveLockDowngrade: RawExclusiveLock {
+pub unsafe trait RawExclusiveLockDowngrade: RawExclusiveLock + crate::share_lock::RawShareLock {
     /// # Safety
     ///
     /// * the caller must own a exclusive lock

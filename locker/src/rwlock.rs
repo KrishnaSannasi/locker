@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::ExclusiveGuard;
-use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
+use crate::exclusive_lock::{RawExclusiveGuard, ExclusiveGuard};
+use crate::share_lock::{RawShareLock, RawShareGuard, ShareGuard};
 
 #[cfg(feature = "extra")]
 pub mod global;
@@ -18,7 +18,7 @@ pub mod local_simple;
 #[cfg(feature = "extra")]
 pub mod local_splittable;
 
-pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock + RawShareLockExt {}
+pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock {}
 #[repr(C)]
 pub struct RwLock<L, T: ?Sized> {
     lock: L,
@@ -95,33 +95,43 @@ impl<L: RawRwLock, T> RwLock<L, T> {
     }
 }
 
-impl<L: RawRwLock, T: ?Sized> RwLock<L, T> {
+impl<L: RawRwLock, T: ?Sized> RwLock<L, T>
+where
+    L::ExclusiveGuardTraits: crate::Inhabitted,
+    L::ShareGuardTraits: crate::Inhabitted,
+{
     #[inline]
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe { ExclusiveGuard::from_raw_parts(self.lock.raw_uniq_lock(), &mut *self.value.get()) }
+        unsafe { ExclusiveGuard::from_raw_parts(
+            RawExclusiveGuard::new(&self.lock),
+            self.value.get()
+        ) }
     }
 
     #[inline]
     pub fn try_write(&self) -> Option<ExclusiveGuard<'_, L, T>> {
         unsafe {
             Some(ExclusiveGuard::from_raw_parts(
-                self.lock.try_raw_uniq_lock()?,
-                &mut *self.value.get(),
+                RawExclusiveGuard::try_new(&self.lock)?,
+                self.value.get(),
             ))
         }
     }
 
     #[inline]
     pub fn read(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(self.lock.raw_shr_lock(), &*self.value.get()) }
+        unsafe { ShareGuard::from_raw_parts(
+            RawShareGuard::new(&self.lock),
+            self.value.get()
+        ) }
     }
 
     #[inline]
     pub fn try_read(&self) -> Option<ShareGuard<'_, L, T>> {
         unsafe {
             Some(ShareGuard::from_raw_parts(
-                self.lock.try_raw_shr_lock()?,
-                &*self.value.get(),
+                RawShareGuard::try_new(&self.lock)?,
+                self.value.get(),
             ))
         }
     }

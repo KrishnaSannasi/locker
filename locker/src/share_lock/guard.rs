@@ -29,7 +29,7 @@ where
 }
 
 impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> {
-    pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: &'a T) -> Self {
+    pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: *const T) -> Self {
         Self {
             raw,
             value,
