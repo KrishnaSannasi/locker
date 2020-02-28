@@ -206,6 +206,69 @@ unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prel
     }
 }
 
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &L {
+    #[inline(always)]
+    unsafe fn uniq_unlock_fair(&self) {
+        L::uniq_unlock_fair(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump_fair(&self) {
+        L::uniq_bump_fair(self)
+    }
+}
+
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &mut L {
+    #[inline(always)]
+    unsafe fn uniq_unlock_fair(&self) {
+        L::uniq_unlock_fair(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump_fair(&self) {
+        L::uniq_bump_fair(self)
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Box<L> {
+    #[inline(always)]
+    unsafe fn uniq_unlock_fair(&self) {
+        L::uniq_unlock_fair(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump_fair(&self) {
+        L::uniq_bump_fair(self)
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Arc<L> {
+    #[inline(always)]
+    unsafe fn uniq_unlock_fair(&self) {
+        L::uniq_unlock_fair(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump_fair(&self) {
+        L::uniq_bump_fair(self)
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Rc<L> {
+    #[inline(always)]
+    unsafe fn uniq_unlock_fair(&self) {
+        L::uniq_unlock_fair(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump_fair(&self) {
+        L::uniq_bump_fair(self)
+    }
+}
+
 unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &L {
     unsafe fn uniq_split(&self) {
         L::uniq_split(self)
