@@ -2,7 +2,7 @@ pub mod guard;
 #[doc(hidden)]
 pub mod raw;
 
-pub use guard::{UniqueGuard, MappedUniqueGuard};
+pub use guard::{MappedUniqueGuard, UniqueGuard};
 pub use raw::RawUniqueGuard;
 
 use crate::RawLockInfo;
@@ -27,20 +27,20 @@ where
 }
 
 /// # Safety
-/// 
+///
 /// * `uniq_unlock` must be called `n` times before `uniq_lock`,
-/// `uniq_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two, 
+/// `uniq_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two,
 /// provided that `RawShareLock` is implemented), where `n` is the number of times
 /// `uniq_lock` and `uniq_split` are called combined (for `uniq_split`, provided that
 /// `SplittableUniqueLock` is implemented)
 pub unsafe trait RawUniqueLock {
     /// uniq locks the lock
-    /// 
+    ///
     /// blocks until lock is acquired
     fn uniq_lock(&self);
 
     /// attempts to uniq lock the lock
-    /// 
+    ///
     /// returns true on success
     fn uniq_try_lock(&self) -> bool;
 
@@ -98,7 +98,7 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &mut L {
     }
 }
 
-#[cfg(any(feature="std", feature="alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::Box<L> {
     #[inline(always)]
     fn uniq_lock(&self) {
@@ -116,7 +116,7 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::B
     }
 }
 
-#[cfg(any(feature="std", feature="alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::Arc<L> {
     #[inline(always)]
     fn uniq_lock(&self) {
@@ -134,7 +134,7 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::A
     }
 }
 
-#[cfg(any(feature="std", feature="alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::Rc<L> {
     #[inline(always)]
     fn uniq_lock(&self) {

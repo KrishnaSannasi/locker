@@ -1,12 +1,9 @@
-#![cfg_attr(not(any(feature="std", feature="parking_lot_core")), no_std)]
+#![cfg_attr(not(any(feature = "std", feature = "parking_lot_core")), no_std)]
 
-#[cfg(not(any(feature="std", feature="parking_lot_core")))]
+#[cfg(not(any(feature = "std", feature = "parking_lot_core")))]
 extern crate core as std;
 
-#[cfg(all(
-    feature="alloc",
-    not(feature="std")
-))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
 mod alloc_prelude {
@@ -67,9 +64,10 @@ impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {}
 
 pub mod mutex;
 pub mod once;
-pub mod share_lock;
-pub mod unique_lock;
 pub mod rwlock;
+pub mod share_lock;
+mod spin_wait;
+pub mod unique_lock;
 
 #[cfg(feature = "parking_lot_core")]
 pub mod condvar;

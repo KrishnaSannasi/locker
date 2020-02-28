@@ -2,7 +2,7 @@ pub mod guard;
 #[doc(hidden)]
 pub mod raw;
 
-pub use guard::{ShareGuard, MappedShareGuard};
+pub use guard::{MappedShareGuard, ShareGuard};
 pub use raw::RawShareGuard;
 
 use crate::RawLockInfo;
@@ -27,18 +27,18 @@ where
 }
 
 /// # Safety
-/// 
+///
 /// * `shr_unlock` must be called `n` times before `uniq_lock`,
-/// `uniq_try_lock` can succeed (provided that `RawUniqueLock` is implemented), 
+/// `uniq_try_lock` can succeed (provided that `RawUniqueLock` is implemented),
 /// where `n` is the number of times `shr_lock` and `shr_split` are called combined
 pub unsafe trait RawShareLock {
     /// shr locks the lock
-    /// 
+    ///
     /// blocks until lock is acquired
     fn shr_lock(&self);
 
     /// attempts to shr lock the lock
-    /// 
+    ///
     /// returns true on success
     fn shr_try_lock(&self) -> bool;
 
@@ -98,7 +98,7 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &mut L {
     }
 }
 
-#[cfg(any(feature="std", feature="alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Box<L> {
     #[inline(always)]
     fn shr_lock(&self) {
@@ -121,7 +121,7 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Box
     }
 }
 
-#[cfg(any(feature="std", feature="alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Arc<L> {
     #[inline(always)]
     fn shr_lock(&self) {
@@ -144,7 +144,7 @@ unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Arc
     }
 }
 
-#[cfg(any(feature="std", feature="alloc"))]
+#[cfg(any(feature = "std", feature = "alloc"))]
 unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Rc<L> {
     #[inline(always)]
     fn shr_lock(&self) {

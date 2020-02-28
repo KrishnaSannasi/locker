@@ -16,11 +16,11 @@ impl RawLock {
             state: Cell::new(0),
         }
     }
-    
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         unsafe { Mutex::from_raw_parts(Self::new(), value) }
     }
-    
+
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
         unsafe { RwLock::from_raw_parts(Self::new(), value) }
     }

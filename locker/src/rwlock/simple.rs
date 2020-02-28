@@ -543,7 +543,7 @@ fn test_writes() {
 
     *_lock = 100;
 
-    std::thread::sleep(std::time::Duration::from_millis(10));
+    std::thread::sleep(std::time::Duration::from_millis(100));
 
     drop(_lock);
 
@@ -561,6 +561,6 @@ fn test_reads() {
     }
 
     {
-        let _a = m.write();
+        let _a = m.try_write().unwrap();
     }
 }

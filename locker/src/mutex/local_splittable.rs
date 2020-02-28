@@ -21,7 +21,7 @@ impl RawLock {
 
 unsafe impl crate::RawLockInfo for RawLock {
     const INIT: Self = Self::new();
-    
+
     type UniqueGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }

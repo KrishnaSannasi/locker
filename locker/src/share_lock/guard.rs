@@ -104,3 +104,9 @@ impl<L: RawShareLock + RawLockInfo, T: ?Sized> Deref for ShareGuard<'_, L, T> {
         unsafe { &*self.value }
     }
 }
+
+impl<L: RawShareLock + RawLockInfo, T: ?Sized> Clone for ShareGuard<'_, L, T> {
+    fn clone(&self) -> Self {
+        unsafe { Self::new(self.raw.clone(), &*self.value) }
+    }
+}

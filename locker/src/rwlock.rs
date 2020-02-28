@@ -3,7 +3,15 @@ use std::cell::UnsafeCell;
 use crate::share_lock::{RawShareLockExt, ShareGuard};
 use crate::unique_lock::{RawUniqueLockExt, UniqueGuard};
 
-// pub mod simple;
+#[cfg(feature = "extra")]
+pub mod global;
+
+#[cfg(feature = "parking_lot_core")]
+pub mod simple;
+
+#[cfg(feature = "extra")]
+pub mod spin;
+
 #[cfg(feature = "extra")]
 pub mod local_simple;
 

@@ -19,11 +19,11 @@ impl RawLock {
             state: Cell::new(0),
         }
     }
-    
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         unsafe { Mutex::from_raw_parts(Self::new(), value) }
     }
-    
+
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
         unsafe { RwLock::from_raw_parts(Self::new(), value) }
     }
@@ -45,7 +45,7 @@ unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
 
     #[inline]
     fn uniq_try_lock(&self) -> bool {
-        let state  = self.state.get();
+        let state = self.state.get();
 
         if state == 0 {
             // if unlocked
@@ -74,9 +74,10 @@ unsafe impl crate::unique_lock::SplittableUniqueLock for RawLock {
     unsafe fn uniq_split(&self) {
         let state = self.state.get();
 
-        let state = state.checked_add(Self::INC)
+        let state = state
+            .checked_add(Self::INC)
             .expect("tried to create too many shared locks");
-        
+
         self.state.set(state);
     }
 }
@@ -92,7 +93,7 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
 
     // #[inline]
     fn shr_try_lock(&self) -> bool {
-        let state  = self.state.get();
+        let state = self.state.get();
 
         if state == 0 {
             // if unlocked
@@ -100,12 +101,13 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
         } else if state & Self::UNIQ_BIT == 0 {
             // if share locked
 
-            let state = state.checked_add(Self::INC)
+            let state = state
+                .checked_add(Self::INC)
                 .expect("tried to create too many shared locks");
-            
+
             self.state.set(state);
         } else {
-            return false
+            return false;
         }
 
         true
@@ -115,9 +117,10 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
     unsafe fn shr_split(&self) {
         let state = self.state.get();
 
-        let state = state.checked_add(Self::INC)
+        let state = state
+            .checked_add(Self::INC)
             .expect("tried to create too many shared locks");
-        
+
         self.state.set(state);
     }
 
