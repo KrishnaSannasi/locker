@@ -552,7 +552,7 @@ fn test_writes() {
 
 #[test]
 fn test_reads() {
-    let m = RawLock::rwlock(10);
+    let m = RawLock::rwlock((10, 0));
 
     {
         let _a = m.read();
@@ -562,5 +562,17 @@ fn test_reads() {
 
     {
         let _a = m.try_write().unwrap();
+        let (_b, _c) = _a.split_map(|(x, y)| (x, y));
+    }
+
+    {
+        let _a = m.try_write().unwrap();
+        let (_b, _c) = _a.split_map(|(x, y)| (x, y));
+    }
+
+    {
+        let _a = m.read();
+        let _b = m.read();
+        let _c = crate::share_lock::ShareGuard::clone(&_b);
     }
 }

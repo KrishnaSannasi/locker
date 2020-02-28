@@ -28,11 +28,9 @@ where
 
 /// # Safety
 ///
-/// * `uniq_unlock` must be called `n` times before `uniq_lock`,
+/// * `uniq_unlock` must be called before before `uniq_lock`,
 /// `uniq_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two,
-/// provided that `RawShareLock` is implemented), where `n` is the number of times
-/// `uniq_lock` and `uniq_split` are called combined (for `uniq_split`, provided that
-/// `SplittableUniqueLock` is implemented)
+/// provided that `RawShareLock` is implemented)
 pub unsafe trait RawUniqueLock {
     /// uniq locks the lock
     ///
@@ -51,16 +49,17 @@ pub unsafe trait RawUniqueLock {
     unsafe fn uniq_unlock(&self);
 }
 
+/// # Safety
+///
+/// * `uniq_unlock` must be called `n` times before `uniq_lock`,
+/// `uniq_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two,
+/// provided that `RawShareLock` is implemented), where `n` is the number of times
+/// `uniq_lock` and `uniq_split` are called combined
 pub unsafe trait SplittableUniqueLock: RawUniqueLock {
     /// # Safety
     ///
-    /// This unique lock must be locked before calling this function,
-    ///
-    /// and
-    ///
-    /// the uniq lock must call `uniq_unlock` (n + 1) times *after* this function is called
-    /// before `uniq_lock` can succeed again, where `n` is the number of times `uniq_split`
-    /// is called
+    /// * the caller must own a unique lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn uniq_split(&self);
 }
 

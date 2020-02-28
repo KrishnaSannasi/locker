@@ -44,7 +44,7 @@ pub unsafe trait RawShareLock {
 
     /// # Safety
     ///
-    /// * This lock must be share locked before calling this function
+    /// * the caller must own a share lock
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_split(&self);
 

@@ -70,7 +70,7 @@ impl Global {
     }
 }
 
-#[cfg(feature="parking_lot_core")]
+#[cfg(feature = "parking_lot_core")]
 type Lock = crate::rwlock::simple::RawLock;
 
 #[cfg(not(feature = "parking_lot_core"))]

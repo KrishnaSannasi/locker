@@ -64,6 +64,7 @@ impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {}
 
 pub mod mutex;
 pub mod once;
+pub mod reentrant;
 pub mod rwlock;
 pub mod share_lock;
 mod spin_wait;
