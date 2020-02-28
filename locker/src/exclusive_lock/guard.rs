@@ -29,7 +29,7 @@ where
 }
 
 impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
-    pub fn new(raw: RawExclusiveGuard<'a, L>, value: &'a mut T) -> Self {
+    pub unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: &'a mut T) -> Self {
         Self {
             raw,
             value,
@@ -50,7 +50,7 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
     ) -> ExclusiveGuard<'a, L, U, Mapped> {
         let value = f(unsafe { &mut *self.value });
 
-        ExclusiveGuard::new(self.raw, value)
+        unsafe { ExclusiveGuard::from_raw_parts(self.raw, value) }
     }
 
     pub fn try_map<F: FnOnce(&mut T) -> Result<&mut U, E>, E, U: ?Sized>(
@@ -58,7 +58,7 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
         f: F,
     ) -> Result<ExclusiveGuard<'a, L, U, Mapped>, TryMapError<E, Self>> {
         match f(unsafe { &mut *self.value }) {
-            Ok(value) => Ok(ExclusiveGuard::new(self.raw, value)),
+            Ok(value) => Ok(unsafe { ExclusiveGuard::from_raw_parts(self.raw, value) }),
             Err(e) => Err(TryMapError(e, self)),
         }
     }
@@ -81,7 +81,10 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
         let u_lock = self.raw.clone();
         let v_lock = self.raw;
 
-        (ExclusiveGuard::new(u_lock, u), ExclusiveGuard::new(v_lock, v))
+        (
+            unsafe { ExclusiveGuard::from_raw_parts(u_lock, u) },
+            unsafe { ExclusiveGuard::from_raw_parts(v_lock, v) },
+        )
     }
 
     #[allow(clippy::type_complexity)]
@@ -100,7 +103,10 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
                 let u_lock = self.raw.clone();
                 let v_lock = self.raw;
 
-                Ok((ExclusiveGuard::new(u_lock, u), ExclusiveGuard::new(v_lock, v)))
+                Ok((
+                    unsafe { ExclusiveGuard::from_raw_parts(u_lock, u) },
+                    unsafe { ExclusiveGuard::from_raw_parts(v_lock, v) },
+                ))
             }
             Err(e) => Err(TryMapError(e, self)),
         }

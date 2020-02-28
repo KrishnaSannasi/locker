@@ -85,13 +85,21 @@ impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
 impl<L: RawReentrantMutex, T: ?Sized> ReentrantMutex<L, T> {
     #[inline]
     pub fn lock(&self) -> ShareGuard<'_, L, T> {
-        ShareGuard::new(self.lock.raw_shr_lock(), unsafe { &*self.value.get() })
+        unsafe {
+            ShareGuard::from_raw_parts(
+                self.lock.raw_shr_lock(),
+                &*self.value.get(),
+            )
+        }
     }
 
     #[inline]
     pub fn try_lock(&self) -> Option<ShareGuard<'_, L, T>> {
-        Some(ShareGuard::new(self.lock.try_raw_shr_lock()?, unsafe {
-            &*self.value.get()
-        }))
+        unsafe {
+            Some(ShareGuard::from_raw_parts(
+                self.lock.try_raw_shr_lock()?,
+                &*self.value.get(),
+            ))
+        }
     }
 }

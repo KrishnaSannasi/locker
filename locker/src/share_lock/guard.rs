@@ -29,7 +29,7 @@ where
 }
 
 impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> {
-    pub fn new(raw: RawShareGuard<'a, L>, value: &'a T) -> Self {
+    pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: &'a T) -> Self {
         Self {
             raw,
             value,
@@ -47,7 +47,7 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
     pub fn map<F: FnOnce(&T) -> &U, U: ?Sized>(self, f: F) -> ShareGuard<'a, L, U, Mapped> {
         let value = f(unsafe { &*self.value });
 
-        ShareGuard::new(self.raw, value)
+        unsafe { ShareGuard::from_raw_parts(self.raw, value) }
     }
 
     pub fn try_map<F: FnOnce(&T) -> Result<&U, E>, E, U: ?Sized>(
@@ -55,7 +55,7 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
         f: F,
     ) -> Result<ShareGuard<'a, L, U, Mapped>, TryMapError<E, Self>> {
         match f(unsafe { &*self.value }) {
-            Ok(value) => Ok(ShareGuard::new(self.raw, value)),
+            Ok(value) => Ok(unsafe { ShareGuard::from_raw_parts(self.raw, value) }),
             Err(e) => Err(TryMapError(e, self)),
         }
     }
@@ -76,7 +76,10 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
         let u_lock = self.raw.clone();
         let v_lock = self.raw;
 
-        (ShareGuard::new(u_lock, u), ShareGuard::new(v_lock, v))
+        (
+            unsafe { ShareGuard::from_raw_parts(u_lock, u) },
+            unsafe { ShareGuard::from_raw_parts(v_lock, v) },
+        )
     }
 
     #[allow(clippy::type_complexity)]
@@ -90,7 +93,10 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
                 let u_lock = self.raw.clone();
                 let v_lock = self.raw;
 
-                Ok((ShareGuard::new(u_lock, u), ShareGuard::new(v_lock, v)))
+                Ok((
+                    unsafe { ShareGuard::from_raw_parts(u_lock, u) },
+                    unsafe { ShareGuard::from_raw_parts(v_lock, v) },
+                ))
             }
             Err(e) => Err(TryMapError(e, self)),
         }
@@ -129,6 +135,6 @@ impl<L: RawShareLock + RawLockInfo, T: ?Sized, St> Deref for ShareGuard<'_, L, T
 
 impl<L: RawShareLock + RawLockInfo, T: ?Sized, St> Clone for ShareGuard<'_, L, T, St> {
     fn clone(&self) -> Self {
-        unsafe { Self::new(self.raw.clone(), &*self.value) }
+        unsafe { Self::from_raw_parts(self.raw.clone(), &*self.value) }
     }
 }
