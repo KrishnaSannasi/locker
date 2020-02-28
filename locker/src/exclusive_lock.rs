@@ -44,13 +44,14 @@ pub unsafe trait RawExclusiveLock {
 
     /// # Safety
     ///
-    /// * This lock must be uniq locked before calling this function
+    /// * the caller must own a exclusive lock
     /// * the lock must not have been moved since it was locked
     unsafe fn uniq_unlock(&self);
 
     /// # Safety
     ///
-    /// This uniq lock must be locked before calling this function
+    /// * the caller must own a exclusive lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn uniq_bump(&self) {
         self.uniq_unlock();
         self.uniq_lock();
@@ -71,9 +72,21 @@ pub unsafe trait SplittableExclusiveLock: RawExclusiveLock {
     unsafe fn uniq_split(&self);
 }
 
+/// # Safety
+/// 
+/// same safety notes about `uniq_unlock` apply to `uniq_unlock_fair`
+/// same safety notes about `uniq_bump` apply to `uniq_bump_fair`
 pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
+    /// # Safety
+    ///
+    /// * the caller must own a exclusive lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn uniq_unlock_fair(&self);
     
+    /// # Safety
+    ///
+    /// * the caller must own a exclusive lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn uniq_bump_fair(&self) {
         self.uniq_unlock_fair();
         self.uniq_lock();

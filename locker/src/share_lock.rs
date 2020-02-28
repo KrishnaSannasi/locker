@@ -50,21 +50,35 @@ pub unsafe trait RawShareLock {
 
     /// # Safety
     ///
-    /// This shr lock must be locked before calling this function
+    /// * the caller must own a shr lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn shr_unlock(&self);
 
     /// # Safety
     ///
-    /// This shr lock must be locked before calling this function
+    /// * the caller must own a exclusive lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn shr_bump(&self) {
         self.shr_unlock();
         self.shr_lock();
     }
 }
 
+/// # Safety
+/// 
+/// same safety notes about `shr_unlock` apply to `shr_unlock_fair`
+/// same safety notes about `shr_bump` apply to `shr_bump_fair`
 pub unsafe trait RawShareLockFair: RawShareLock {
+    /// # Safety
+    ///
+    /// * the caller must own a shr lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn shr_unlock_fair(&self);
     
+    /// # Safety
+    ///
+    /// * the caller must own a shr lock
+    /// * the lock must not have been moved since it was locked
     unsafe fn shr_bump_fair(&self) {
         self.shr_unlock_fair();
         self.shr_lock();
