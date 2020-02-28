@@ -1,9 +1,8 @@
-
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
+use crate::share_lock::{RawShareLock, RawShareLockFair};
 
 use super::ThreadInfo;
 
@@ -50,7 +49,10 @@ impl<L, I> RawReentrantLock<L, I> {
     }
 }
 
-unsafe impl<L: crate::mutex::RawMutex, I: ThreadInfo> super::RawReentrantMutex for RawReentrantLock<L, I> {}
+unsafe impl<L: crate::mutex::RawMutex, I: ThreadInfo> super::RawReentrantMutex
+    for RawReentrantLock<L, I>
+{
+}
 unsafe impl<L: crate::RawLockInfo, I: ThreadInfo> crate::RawLockInfo for RawReentrantLock<L, I> {
     const INIT: Self = unsafe { Self::from_raw_parts(L::INIT, I::INIT) };
 
@@ -68,7 +70,7 @@ impl<L: RawExclusiveLock, I: ThreadInfo> RawReentrantLock<L, I> {
             unsafe { self.shr_split() }
         } else {
             if !try_lock() {
-                return false
+                return false;
             }
 
             self.owner.store(id, Ordering::Relaxed);
@@ -123,7 +125,10 @@ unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for RawReentrantLoc
 
     #[inline]
     unsafe fn shr_unlock(&self) {
-        self.unlock_internal(#[cold] || self.inner.uniq_unlock())
+        self.unlock_internal(
+            #[cold]
+            || self.inner.uniq_unlock(),
+        )
     }
 
     #[inline]
@@ -137,7 +142,10 @@ unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for RawReentrantLoc
 unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for RawReentrantLock<L, I> {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
-        self.unlock_internal(#[cold] || self.inner.uniq_unlock_fair())
+        self.unlock_internal(
+            #[cold]
+            || self.inner.uniq_unlock_fair(),
+        )
     }
 
     #[inline]

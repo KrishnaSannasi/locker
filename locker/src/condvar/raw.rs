@@ -2,10 +2,10 @@ use parking_lot_core::{
     self, ParkResult, RequeueOp, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN,
 };
 
-use crate::exclusive_lock::{RawExclusiveLock, raw::RawExclusiveGuard};
-use crate::share_lock::{RawShareLock, raw::RawShareGuard};
-use crate::RawLockInfo;
 use super::{Parkable, WaitTimeoutResult};
+use crate::exclusive_lock::{raw::RawExclusiveGuard, RawExclusiveLock};
+use crate::share_lock::{raw::RawShareGuard, RawShareLock};
+use crate::RawLockInfo;
 
 use std::ptr;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -226,22 +226,24 @@ impl<L: RawExclusiveLock + RawLockInfo + Parkable> RawCondvar<L> {
 
     #[inline]
     pub fn uniq_wait(&self, guard: &mut RawExclusiveGuard<L>) {
-        self.uniq_wait_until_internal(
-            unsafe { guard.inner() },
-            None,
-        );
+        self.uniq_wait_until_internal(unsafe { guard.inner() }, None);
     }
 
     #[inline]
-    pub fn uniq_wait_until(&self, guard: &mut RawExclusiveGuard<L>, instant: Instant) -> WaitTimeoutResult {
-        self.uniq_wait_until_internal(
-            unsafe { guard.inner() }, 
-            Some(instant),
-        )
+    pub fn uniq_wait_until(
+        &self,
+        guard: &mut RawExclusiveGuard<L>,
+        instant: Instant,
+    ) -> WaitTimeoutResult {
+        self.uniq_wait_until_internal(unsafe { guard.inner() }, Some(instant))
     }
 
     #[inline]
-    pub fn uniq_wait_for(&self, guard: &mut RawExclusiveGuard<L>, duration: Duration) -> WaitTimeoutResult {
+    pub fn uniq_wait_for(
+        &self,
+        guard: &mut RawExclusiveGuard<L>,
+        duration: Duration,
+    ) -> WaitTimeoutResult {
         self.uniq_wait_until_internal(
             unsafe { guard.inner() },
             Instant::now().checked_add(duration),
@@ -264,22 +266,24 @@ impl<L: RawShareLock + RawLockInfo + Parkable> RawCondvar<L> {
 
     #[inline]
     pub fn shr_wait(&self, guard: &mut RawShareGuard<L>) {
-        self.shr_wait_until_internal(
-            unsafe { guard.inner() }, 
-            None,
-        );
+        self.shr_wait_until_internal(unsafe { guard.inner() }, None);
     }
 
     #[inline]
-    pub fn shr_wait_until(&self, guard: &mut RawShareGuard<L>, instant: Instant) -> WaitTimeoutResult {
-        self.shr_wait_until_internal(
-            unsafe { guard.inner() },
-            Some(instant),
-        )
+    pub fn shr_wait_until(
+        &self,
+        guard: &mut RawShareGuard<L>,
+        instant: Instant,
+    ) -> WaitTimeoutResult {
+        self.shr_wait_until_internal(unsafe { guard.inner() }, Some(instant))
     }
 
     #[inline]
-    pub fn shr_wait_for(&self, guard: &mut RawShareGuard<L>, duration: Duration) -> WaitTimeoutResult {
+    pub fn shr_wait_for(
+        &self,
+        guard: &mut RawShareGuard<L>,
+        duration: Duration,
+    ) -> WaitTimeoutResult {
         self.shr_wait_until_internal(
             unsafe { guard.inner() },
             Instant::now().checked_add(duration),

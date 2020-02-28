@@ -2,7 +2,7 @@ pub mod guard;
 #[doc(hidden)]
 pub mod raw;
 
-pub use guard::{MappedExclusiveGuard, ExclusiveGuard};
+pub use guard::{ExclusiveGuard, MappedExclusiveGuard};
 pub use raw::RawExclusiveGuard;
 
 use crate::RawLockInfo;
@@ -73,7 +73,7 @@ pub unsafe trait SplittableExclusiveLock: RawExclusiveLock {
 }
 
 /// # Safety
-/// 
+///
 /// same safety notes about `uniq_unlock` apply to `uniq_unlock_fair`
 /// same safety notes about `uniq_bump` apply to `uniq_bump_fair`
 pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
@@ -82,7 +82,7 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     /// * the caller must own a exclusive lock
     /// * the lock must not have been moved since it was locked
     unsafe fn uniq_unlock_fair(&self);
-    
+
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
@@ -231,7 +231,9 @@ unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &mut L {
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Box<L> {
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
+    for crate::alloc_prelude::Box<L>
+{
     #[inline(always)]
     unsafe fn uniq_unlock_fair(&self) {
         L::uniq_unlock_fair(self)
@@ -244,7 +246,9 @@ unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::al
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Arc<L> {
+unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
+    for crate::alloc_prelude::Arc<L>
+{
     #[inline(always)]
     unsafe fn uniq_unlock_fair(&self) {
         L::uniq_unlock_fair(self)

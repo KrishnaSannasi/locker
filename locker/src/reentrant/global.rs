@@ -39,7 +39,10 @@ impl Global {
     }
 
     #[inline]
-    pub fn will_remutex_contend<T: ?Sized, U: ?Sized>(a: &ReentrantMutex<T>, b: &ReentrantMutex<U>) -> bool {
+    pub fn will_remutex_contend<T: ?Sized, U: ?Sized>(
+        a: &ReentrantMutex<T>,
+        b: &ReentrantMutex<U>,
+    ) -> bool {
         unsafe { a.raw().addr() == b.raw().addr() }
     }
 }
@@ -54,11 +57,8 @@ type ReLock = crate::reentrant::simple::RawReentrantLock<Lock>;
 
 macro_rules! new {
     () => {
-        unsafe { ReLock::from_raw_parts(
-            Lock::new(),
-            super::std_thread::StdThreadInfo,
-        ) }
-    }
+        unsafe { ReLock::from_raw_parts(Lock::new(), super::std_thread::StdThreadInfo) }
+    };
 }
 
 // 61 because it is a large prime number,
@@ -116,7 +116,7 @@ unsafe impl RawShareLock for Global {
     unsafe fn shr_unlock(&self) {
         GLOBAL[self.addr()].shr_unlock()
     }
-    
+
     #[inline]
     unsafe fn shr_bump(&self) {
         GLOBAL[self.addr()].shr_bump()
@@ -130,7 +130,7 @@ unsafe impl RawShareLockFair for Global {
         GLOBAL[self.addr()].shr_unlock_fair()
     }
 
-    #[inline]    
+    #[inline]
     unsafe fn shr_bump_fair(&self) {
         GLOBAL[self.addr()].shr_bump_fair()
     }

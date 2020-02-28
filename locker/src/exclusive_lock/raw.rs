@@ -1,7 +1,8 @@
 use super::{RawExclusiveLock, RawExclusiveLockFair, SplittableExclusiveLock};
 use crate::RawLockInfo;
 
-pub type RawExclusiveGuard<'a, L> = _RawExclusiveGuard<'a, L, <L as RawLockInfo>::ExclusiveGuardTraits>;
+pub type RawExclusiveGuard<'a, L> =
+    _RawExclusiveGuard<'a, L, <L as RawLockInfo>::ExclusiveGuardTraits>;
 pub struct _RawExclusiveGuard<'a, L: RawExclusiveLock, Tr> {
     lock: &'a L,
     _traits: Tr,
@@ -36,11 +37,15 @@ impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
     }
 
     pub fn bump(&mut self) {
-        unsafe { self.lock.uniq_bump(); }
+        unsafe {
+            self.lock.uniq_bump();
+        }
     }
 
     pub fn unlocked<R>(&mut self, f: impl FnOnce() -> R) -> R {
-        unsafe { self.lock.uniq_unlock(); }
+        unsafe {
+            self.lock.uniq_unlock();
+        }
         defer!(self.lock.uniq_lock());
         f()
     }
@@ -56,15 +61,21 @@ impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
 impl<L: RawExclusiveLockFair + RawLockInfo> RawExclusiveGuard<'_, L> {
     pub fn unlock_fair(self) {
         let g = std::mem::ManuallyDrop::new(self);
-        unsafe { g.lock.uniq_unlock_fair(); }
+        unsafe {
+            g.lock.uniq_unlock_fair();
+        }
     }
-    
+
     pub fn bump_fair(&mut self) {
-        unsafe { self.lock.uniq_bump_fair(); }
+        unsafe {
+            self.lock.uniq_bump_fair();
+        }
     }
-    
+
     pub fn unlocked_fair<R>(&mut self, f: impl FnOnce() -> R) -> R {
-        unsafe { self.lock.uniq_unlock_fair(); }
+        unsafe {
+            self.lock.uniq_unlock_fair();
+        }
         defer!(self.lock.uniq_lock());
         f()
     }

@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
-use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
 use crate::exclusive_lock::ExclusiveGuard;
+use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
 
 #[cfg(feature = "extra")]
 pub mod global;
@@ -98,12 +98,7 @@ impl<L: RawRwLock, T> RwLock<L, T> {
 impl<L: RawRwLock, T: ?Sized> RwLock<L, T> {
     #[inline]
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe {
-            ExclusiveGuard::from_raw_parts(
-                self.lock.raw_uniq_lock(), 
-                &mut *self.value.get(),
-            )
-        }
+        unsafe { ExclusiveGuard::from_raw_parts(self.lock.raw_uniq_lock(), &mut *self.value.get()) }
     }
 
     #[inline]
@@ -118,12 +113,7 @@ impl<L: RawRwLock, T: ?Sized> RwLock<L, T> {
 
     #[inline]
     pub fn read(&self) -> ShareGuard<'_, L, T> {
-        unsafe {
-            ShareGuard::from_raw_parts(
-                self.lock.raw_shr_lock(),
-                &*self.value.get(),
-            )
-        }
+        unsafe { ShareGuard::from_raw_parts(self.lock.raw_shr_lock(), &*self.value.get()) }
     }
 
     #[inline]

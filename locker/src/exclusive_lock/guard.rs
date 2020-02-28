@@ -79,7 +79,10 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
     pub fn split_map<F, U: ?Sized, V: ?Sized>(
         self,
         f: F,
-    ) -> (ExclusiveGuard<'a, L, U, Mapped>, ExclusiveGuard<'a, L, V, Mapped>)
+    ) -> (
+        ExclusiveGuard<'a, L, U, Mapped>,
+        ExclusiveGuard<'a, L, V, Mapped>,
+    )
     where
         F: FnOnce(&mut T) -> (&mut U, &mut V),
     {
@@ -103,8 +106,13 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
     >(
         self,
         f: F,
-    ) -> Result<(ExclusiveGuard<'a, L, U, Mapped>, ExclusiveGuard<'a, L, V, Mapped>), TryMapError<E, Self>>
-    {
+    ) -> Result<
+        (
+            ExclusiveGuard<'a, L, U, Mapped>,
+            ExclusiveGuard<'a, L, V, Mapped>,
+        ),
+        TryMapError<E, Self>,
+    > {
         match f(unsafe { &mut *self.value }) {
             Ok((u, v)) => {
                 let u_lock = self.raw.clone();
@@ -132,11 +140,11 @@ impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'_, L,
     pub fn unlock_fair(g: Self) {
         g.raw.unlock_fair();
     }
-    
+
     pub fn bump_fair(g: &mut Self) {
         g.raw.bump_fair();
     }
-    
+
     pub fn unlocked_fair<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
         g.raw.unlocked_fair(f)
     }

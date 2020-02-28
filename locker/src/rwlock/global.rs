@@ -1,5 +1,5 @@
-use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
+use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]

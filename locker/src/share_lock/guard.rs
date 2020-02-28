@@ -83,10 +83,9 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
         let u_lock = self.raw.clone();
         let v_lock = self.raw;
 
-        (
-            unsafe { ShareGuard::from_raw_parts(u_lock, u) },
-            unsafe { ShareGuard::from_raw_parts(v_lock, v) },
-        )
+        (unsafe { ShareGuard::from_raw_parts(u_lock, u) }, unsafe {
+            ShareGuard::from_raw_parts(v_lock, v)
+        })
     }
 
     #[allow(clippy::type_complexity)]
@@ -100,10 +99,9 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
                 let u_lock = self.raw.clone();
                 let v_lock = self.raw;
 
-                Ok((
-                    unsafe { ShareGuard::from_raw_parts(u_lock, u) },
-                    unsafe { ShareGuard::from_raw_parts(v_lock, v) },
-                ))
+                Ok((unsafe { ShareGuard::from_raw_parts(u_lock, u) }, unsafe {
+                    ShareGuard::from_raw_parts(v_lock, v)
+                }))
             }
             Err(e) => Err(TryMapError(e, self)),
         }
@@ -122,11 +120,11 @@ impl<L: RawShareLockFair + RawLockInfo, T: ?Sized, St> ShareGuard<'_, L, T, St> 
     pub fn unlock_fair(g: Self) {
         g.raw.unlock_fair();
     }
-    
+
     pub fn bump_fair(g: &mut Self) {
         g.raw.bump_fair();
     }
-    
+
     pub fn unlocked_fair<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
         g.raw.unlocked_fair(f)
     }

@@ -24,7 +24,10 @@ pub unsafe trait ThreadInfo {
     fn id(&self) -> NonZeroUsize;
 }
 
-pub unsafe trait RawReentrantMutex: crate::RawLockInfo + RawShareLock + RawShareLockExt {}
+pub unsafe trait RawReentrantMutex:
+    crate::RawLockInfo + RawShareLock + RawShareLockExt
+{
+}
 #[repr(C)]
 pub struct ReentrantMutex<L, T: ?Sized> {
     lock: L,
@@ -85,12 +88,7 @@ impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
 impl<L: RawReentrantMutex, T: ?Sized> ReentrantMutex<L, T> {
     #[inline]
     pub fn lock(&self) -> ShareGuard<'_, L, T> {
-        unsafe {
-            ShareGuard::from_raw_parts(
-                self.lock.raw_shr_lock(),
-                &*self.value.get(),
-            )
-        }
+        unsafe { ShareGuard::from_raw_parts(self.lock.raw_shr_lock(), &*self.value.get()) }
     }
 
     #[inline]

@@ -2,7 +2,7 @@ use parking_lot_core::{
     self, ParkResult, RequeueOp, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN,
 };
 
-use crate::exclusive_lock::{RawExclusiveLock, ExclusiveGuard};
+use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLock};
 use crate::share_lock::{RawShareLock, ShareGuard};
 
 use crate::RawLockInfo;
@@ -60,7 +60,7 @@ impl<L: Parkable> Condvar<L> {
     pub fn notify_one(&self) -> bool {
         self.raw.notify_one()
     }
-    
+
     #[inline]
     pub fn notify_all(&self) -> usize {
         self.raw.notify_all()
@@ -72,12 +72,20 @@ impl<L: Parkable> Condvar<L> {
     }
 
     #[inline]
-    pub fn wait_until<W: Wait<Lock = L> + ?Sized>(&self, guard: &mut W, instant: Instant) -> WaitTimeoutResult {
+    pub fn wait_until<W: Wait<Lock = L> + ?Sized>(
+        &self,
+        guard: &mut W,
+        instant: Instant,
+    ) -> WaitTimeoutResult {
         guard.wait_until(self, instant)
     }
 
     #[inline]
-    pub fn wait_for<W: Wait<Lock = L> + ?Sized>(&self, guard: &mut W, duration: Duration) -> WaitTimeoutResult {
+    pub fn wait_for<W: Wait<Lock = L> + ?Sized>(
+        &self,
+        guard: &mut W,
+        duration: Duration,
+    ) -> WaitTimeoutResult {
         guard.wait_for(self, duration)
     }
 }
