@@ -8,7 +8,7 @@ pub enum Mapped {}
 
 pub struct TryMapError<E, G>(pub E, pub G);
 
-pub type MappedShareGuard<'a, T> = ShareGuard<'a, T, Mapped>;
+pub type MappedShareGuard<'a, L, T> = ShareGuard<'a, L, T, Mapped>;
 pub struct ShareGuard<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St = Pure> {
     raw: RawShareGuard<'a, L>,
     value: *const T,
@@ -105,7 +105,7 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
     }
 }
 
-impl<L: RawShareLockFair + RawLockInfo, T: ?Sized> ShareGuard<'_, L, T> {
+impl<L: RawShareLockFair + RawLockInfo, T: ?Sized, St> ShareGuard<'_, L, T, St> {
     pub fn unlock_fair(g: Self) {
         g.raw.unlock_fair();
     }
@@ -119,7 +119,7 @@ impl<L: RawShareLockFair + RawLockInfo, T: ?Sized> ShareGuard<'_, L, T> {
     }
 }
 
-impl<L: RawShareLock + RawLockInfo, T: ?Sized> Deref for ShareGuard<'_, L, T> {
+impl<L: RawShareLock + RawLockInfo, T: ?Sized, St> Deref for ShareGuard<'_, L, T, St> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -127,7 +127,7 @@ impl<L: RawShareLock + RawLockInfo, T: ?Sized> Deref for ShareGuard<'_, L, T> {
     }
 }
 
-impl<L: RawShareLock + RawLockInfo, T: ?Sized> Clone for ShareGuard<'_, L, T> {
+impl<L: RawShareLock + RawLockInfo, T: ?Sized, St> Clone for ShareGuard<'_, L, T, St> {
     fn clone(&self) -> Self {
         unsafe { Self::new(self.raw.clone(), &*self.value) }
     }

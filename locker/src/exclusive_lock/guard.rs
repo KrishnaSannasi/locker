@@ -8,7 +8,7 @@ pub enum Mapped {}
 
 pub struct TryMapError<E, G>(pub E, pub G);
 
-pub type MappedExclusiveGuard<'a, T> = ExclusiveGuard<'a, T, Mapped>;
+pub type MappedExclusiveGuard<'a, L, T> = ExclusiveGuard<'a, L, T, Mapped>;
 pub struct ExclusiveGuard<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St = Pure> {
     raw: RawExclusiveGuard<'a, L>,
     value: *mut T,
@@ -115,7 +115,7 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
     }
 }
 
-impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized> ExclusiveGuard<'_, L, T> {
+impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'_, L, T, St> {
     pub fn unlock_fair(g: Self) {
         g.raw.unlock_fair();
     }
@@ -129,7 +129,7 @@ impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized> ExclusiveGuard<'_, L, T> 
     }
 }
 
-impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized> Deref for ExclusiveGuard<'_, L, T> {
+impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> Deref for ExclusiveGuard<'_, L, T, St> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -137,7 +137,7 @@ impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized> Deref for ExclusiveGuard<'_, 
     }
 }
 
-impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized> DerefMut for ExclusiveGuard<'_, L, T> {
+impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> DerefMut for ExclusiveGuard<'_, L, T, St> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.value }
     }
