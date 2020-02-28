@@ -83,6 +83,7 @@ impl<L: RawExclusiveLock, I: ThreadInfo> RawReentrantLock<L, I> {
         if let Some(count) = self.count.get().checked_sub(1) {
             self.count.set(count);
         } else {
+            self.owner.store(0, Ordering::Relaxed);
             unlock_slow()
         }
     }
