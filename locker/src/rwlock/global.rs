@@ -1,3 +1,4 @@
+use crate::share_lock::RawShareLock;
 use crate::unique_lock::RawUniqueLock;
 use crate::RawLockInfo;
 
@@ -5,10 +6,15 @@ use crate::RawLockInfo;
 pub struct Global;
 
 pub type Mutex<T> = crate::mutex::Mutex<Global, T>;
+pub type RwLock<T> = crate::rwlock::RwLock<Global, T>;
 
 impl Global {
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         unsafe { Mutex::from_raw_parts(Self, value) }
+    }
+
+    pub const fn rwlock<T>(value: T) -> RwLock<T> {
+        unsafe { RwLock::from_raw_parts(Self, value) }
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
@@ -23,6 +29,21 @@ impl Global {
 
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn mutex_transpose<T>(value: &mut Mutex<[T]>) -> &mut [Mutex<T>] {
+        unsafe { std::mem::transmute(value) }
+    }
+
+    #[allow(clippy::transmute_ptr_to_ptr)]
+    pub fn rwlock_from_mut<T: ?Sized>(value: &mut T) -> &mut Mutex<T> {
+        unsafe { std::mem::transmute(value) }
+    }
+
+    #[allow(clippy::transmute_ptr_to_ptr)]
+    pub fn rwlock_from_mut_slice<T>(value: &mut [T]) -> &mut [Mutex<T>] {
+        unsafe { std::mem::transmute(value) }
+    }
+
+    #[allow(clippy::transmute_ptr_to_ptr)]
+    pub fn rwlock_transpose<T>(value: &mut Mutex<[T]>) -> &mut [Mutex<T>] {
         unsafe { std::mem::transmute(value) }
     }
 
@@ -42,13 +63,18 @@ impl Global {
     pub fn will_mutex_contend<T: ?Sized, U: ?Sized>(a: &Mutex<T>, b: &Mutex<U>) -> bool {
         unsafe { a.raw().addr() == b.raw().addr() }
     }
+
+    #[inline]
+    pub fn will_rwlock_contend<T: ?Sized, U: ?Sized>(a: &RwLock<T>, b: &RwLock<U>) -> bool {
+        unsafe { a.raw().addr() == b.raw().addr() }
+    }
 }
 
-#[cfg(feature = "parking_lot_core")]
-type Lock = crate::mutex::simple::RawLock;
+#[cfg(feature="parking_lot_core")]
+type Lock = crate::rwlock::simple::RawLock;
 
 #[cfg(not(feature = "parking_lot_core"))]
-type Lock = crate::mutex::spin::RawLock;
+type Lock = crate::rwlock::spin::RawLock;
 
 unsafe impl RawLockInfo for Global {
     const INIT: Self = Self;
@@ -98,6 +124,24 @@ unsafe impl RawUniqueLock for Global {
     }
 }
 
+unsafe impl RawShareLock for Global {
+    fn shr_lock(&self) {
+        GLOBAL[self.addr()].shr_lock()
+    }
+
+    fn shr_try_lock(&self) -> bool {
+        GLOBAL[self.addr()].shr_try_lock()
+    }
+
+    unsafe fn shr_split(&self) {
+        GLOBAL[self.addr()].shr_split()
+    }
+
+    unsafe fn shr_unlock(&self) {
+        GLOBAL[self.addr()].shr_unlock()
+    }
+}
+
 #[test]
 fn test_contention() {
     let mtx = [Global::mutex([0; 61]), Global::mutex([0; 61])];
@@ -109,6 +153,27 @@ fn test_contention() {
     assert!(b.try_lock().is_none());
     drop(_lock);
 
+    let rwlock = [Global::rwlock([0; 61]), Global::rwlock([0; 61])];
+
+    let [ref a, ref b] = rwlock;
+    assert!(Global::will_rwlock_contend(a, b));
+
+    let _lock = a.write();
+    assert!(b.try_write().is_none());
+    drop(_lock);
+
+    let _lock = a.read();
+    assert!(b.try_write().is_none());
+    drop(_lock);
+
+    let _lock = a.read();
+    assert!(b.try_read().is_some());
+    drop(_lock);
+
+    let _lock = a.write();
+    assert!(b.try_read().is_none());
+    drop(_lock);
+
     let mtx = [Global::mutex([0; 60]), Global::mutex([0; 60])];
 
     let [ref a, ref b] = mtx;
@@ -116,4 +181,25 @@ fn test_contention() {
 
     let _lock = a.lock();
     let _lock = b.lock();
+
+    let rwlock = [Global::rwlock([0; 60]), Global::rwlock([0; 60])];
+
+    let [ref a, ref b] = rwlock;
+    assert!(!Global::will_rwlock_contend(a, b));
+
+    let _lock = a.write();
+    assert!(b.try_write().is_some());
+    drop(_lock);
+
+    let _lock = a.read();
+    assert!(b.try_write().is_some());
+    drop(_lock);
+
+    let _lock = a.read();
+    assert!(b.try_read().is_some());
+    drop(_lock);
+
+    let _lock = a.write();
+    assert!(b.try_read().is_some());
+    drop(_lock);
 }
