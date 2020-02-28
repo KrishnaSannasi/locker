@@ -1,0 +1,115 @@
+use crate::share_lock::RawShareLock;
+use crate::RawLockInfo;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Global;
+
+pub type ReMutex<T> = crate::mutex::Mutex<Global, T>;
+
+impl Global {
+    pub const fn remutex<T>(value: T) -> ReMutex<T> {
+        unsafe { ReMutex::from_raw_parts(Self, value) }
+    }
+
+    #[allow(clippy::transmute_ptr_to_ptr)]
+    pub fn remutex_from_mut<T: ?Sized>(value: &mut T) -> &mut ReMutex<T> {
+        unsafe { std::mem::transmute(value) }
+    }
+
+    #[allow(clippy::transmute_ptr_to_ptr)]
+    pub fn remutex_from_mut_slice<T>(value: &mut [T]) -> &mut [ReMutex<T>] {
+        unsafe { std::mem::transmute(value) }
+    }
+
+    #[allow(clippy::transmute_ptr_to_ptr)]
+    pub fn remutex_transpose<T>(value: &mut ReMutex<[T]>) -> &mut [ReMutex<T>] {
+        unsafe { std::mem::transmute(value) }
+    }
+
+    #[inline(always)]
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn addr(&self) -> usize {
+        (self as *const _ as usize) % GLOBAL.len()
+    }
+
+    #[inline]
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub fn will_contend(&self, other: &Self) -> bool {
+        self.addr() == other.addr()
+    }
+
+    #[inline]
+    pub fn will_remutex_contend<T: ?Sized, U: ?Sized>(a: &ReMutex<T>, b: &ReMutex<U>) -> bool {
+        unsafe { a.raw().addr() == b.raw().addr() }
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
+type Lock = crate::mutex::simple::RawLock;
+
+#[cfg(not(feature = "parking_lot_core"))]
+type Lock = crate::mutex::spin::RawLock;
+
+type ReLock = crate::reentrant::simple::RawReentrantLock<Lock>;
+
+macro_rules! new {
+    () => {
+        unsafe { ReLock::from_raw_parts(
+            Lock::new(),
+            super::std_thread::StdThreadInfo,
+        ) }
+    }
+}
+
+// 61 because it is a large prime number,
+// this will reduce contention between unrelated locks
+// because unrealated locks will be unlikely to pick up the same lock,
+// even they are contigious in memory
+#[rustfmt::skip]
+static GLOBAL: [ReLock; 61] = [
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(), new!(), new!(), new!(), 
+    new!(),
+];
+
+unsafe impl crate::reentrant::RawReentrantMutex for Global {}
+unsafe impl RawLockInfo for Global {
+    const INIT: Self = Self;
+
+    type ExclusiveGuardTraits = <ReLock as RawLockInfo>::ExclusiveGuardTraits;
+    type ShareGuardTraits = <ReLock as RawLockInfo>::ShareGuardTraits;
+}
+
+unsafe impl RawShareLock for Global {
+    fn shr_lock(&self) {
+        GLOBAL[self.addr()].shr_lock()
+    }
+
+    fn shr_try_lock(&self) -> bool {
+        GLOBAL[self.addr()].shr_try_lock()
+    }
+
+    unsafe fn shr_split(&self) {
+        GLOBAL[self.addr()].shr_split()
+    }
+
+    unsafe fn shr_unlock(&self) {
+        GLOBAL[self.addr()].shr_unlock()
+    }
+}

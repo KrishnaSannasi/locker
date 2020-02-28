@@ -2,7 +2,7 @@
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::share_lock::{RawShareLock, RawShareLockFair, RawShareLockExt, ShareGuard};
+use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
 
 use super::ThreadInfo;

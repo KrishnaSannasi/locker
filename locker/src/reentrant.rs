@@ -3,10 +3,14 @@ use std::num::NonZeroUsize;
 
 use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
 
+#[cfg(feature = "extra")]
 pub mod simple;
 
 #[cfg(feature = "std")]
 pub mod std_thread;
+
+#[cfg(all(feature = "extra", feature = "std"))]
+pub mod global;
 
 /// # Safety
 ///
@@ -21,6 +25,7 @@ pub unsafe trait ThreadInfo {
 }
 
 pub unsafe trait RawReentrantMutex: crate::RawLockInfo + RawShareLock + RawShareLockExt {}
+#[repr(C)]
 pub struct ReentrantMutex<L, T: ?Sized> {
     lock: L,
     value: UnsafeCell<T>,
