@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
 use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
-use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockExt, ExclusiveGuard};
+use crate::exclusive_lock::ExclusiveGuard;
 
 #[cfg(feature = "extra")]
 pub mod global;
@@ -18,7 +18,7 @@ pub mod local_simple;
 #[cfg(feature = "extra")]
 pub mod local_splittable;
 
-pub unsafe trait RawRwLock: crate::RawLockInfo + RawExclusiveLock + RawShareLock + RawExclusiveLockExt + RawShareLockExt {}
+pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock + RawShareLockExt {}
 #[repr(C)]
 pub struct RwLock<L, T: ?Sized> {
     lock: L,
