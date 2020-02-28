@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::{RawExclusiveLockExt, ExclusiveGuard};
+use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockExt, ExclusiveGuard};
 
 #[cfg(feature = "extra")]
 pub mod global;
@@ -30,20 +30,21 @@ pub mod prelude {
     pub type LocalSplittableMutex<T> = super::Mutex<super::local_splittable::RawLock, T>;
 }
 
+pub unsafe trait RawMutex: crate::RawLockInfo + RawExclusiveLock + RawExclusiveLockExt {}
 #[repr(C)]
 pub struct Mutex<L, T: ?Sized> {
     lock: L,
     value: UnsafeCell<T>,
 }
 
-impl<L: crate::RawLockInfo, T: Default> Default for Mutex<L, T> {
+impl<L: RawMutex, T: Default> Default for Mutex<L, T> {
     fn default() -> Self {
         Self::new(T::default())
     }
 }
 
-unsafe impl<L: Send, T: Send> Send for Mutex<L, T> {}
-unsafe impl<L: Sync, T: Send> Sync for Mutex<L, T> {}
+unsafe impl<L: Send + RawMutex, T: Send> Send for Mutex<L, T> {}
+unsafe impl<L: Sync + RawMutex, T: Send> Sync for Mutex<L, T> {}
 
 impl<L, T> Mutex<L, T> {
     /// # Safety
@@ -90,13 +91,13 @@ impl<L, T: ?Sized> Mutex<L, T> {
     }
 }
 
-impl<L: crate::RawLockInfo, T> Mutex<L, T> {
+impl<L: RawMutex, T> Mutex<L, T> {
     pub fn new(value: T) -> Self {
         unsafe { Self::from_raw_parts(L::INIT, value) }
     }
 }
 
-impl<L: RawExclusiveLockExt, T: ?Sized> Mutex<L, T> {
+impl<L: RawMutex, T: ?Sized> Mutex<L, T> {
     pub fn lock(&self) -> ExclusiveGuard<'_, L, T> {
         ExclusiveGuard::new(self.lock.raw_uniq_lock(), unsafe { &mut *self.value.get() })
     }

@@ -76,13 +76,6 @@ type Lock = crate::rwlock::simple::RawLock;
 #[cfg(not(feature = "parking_lot_core"))]
 type Lock = crate::rwlock::spin::RawLock;
 
-unsafe impl RawLockInfo for Global {
-    const INIT: Self = Self;
-
-    type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
-    type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;
-}
-
 // 61 because it is a large prime number,
 // this will reduce contention between unrelated locks
 // because unrealated locks will be unlikely to pick up the same lock,
@@ -109,6 +102,15 @@ static GLOBAL: [Lock; 61] = [
     Lock::new(), Lock::new(), Lock::new(), Lock::new(),
     Lock::new(),
 ];
+
+unsafe impl crate::mutex::RawMutex for Global {}
+unsafe impl crate::rwlock::RawRwLock for Global {}
+unsafe impl RawLockInfo for Global {
+    const INIT: Self = Self;
+
+    type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
+    type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;
+}
 
 unsafe impl RawExclusiveLock for Global {
     fn uniq_lock(&self) {

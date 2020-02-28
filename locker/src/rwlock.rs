@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
-use crate::share_lock::{RawShareLockExt, ShareGuard};
-use crate::exclusive_lock::{RawExclusiveLockExt, ExclusiveGuard};
+use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
+use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockExt, ExclusiveGuard};
 
 #[cfg(feature = "extra")]
 pub mod global;
@@ -18,13 +18,14 @@ pub mod local_simple;
 #[cfg(feature = "extra")]
 pub mod local_splittable;
 
+pub unsafe trait RawRwLock: crate::RawLockInfo + RawExclusiveLock + RawShareLock + RawExclusiveLockExt + RawShareLockExt {}
 #[repr(C)]
 pub struct RwLock<L, T: ?Sized> {
     lock: L,
     value: UnsafeCell<T>,
 }
 
-impl<L: crate::RawLockInfo, T: Default> Default for RwLock<L, T> {
+impl<L: RawRwLock, T: Default> Default for RwLock<L, T> {
     fn default() -> Self {
         Self::new(T::default())
     }
@@ -78,13 +79,13 @@ impl<L, T: ?Sized> RwLock<L, T> {
     }
 }
 
-impl<L: crate::RawLockInfo, T> RwLock<L, T> {
+impl<L: RawRwLock, T> RwLock<L, T> {
     pub fn new(value: T) -> Self {
         unsafe { Self::from_raw_parts(L::INIT, value) }
     }
 }
 
-impl<L: RawExclusiveLockExt, T: ?Sized> RwLock<L, T> {
+impl<L: RawRwLock, T: ?Sized> RwLock<L, T> {
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
         ExclusiveGuard::new(self.lock.raw_uniq_lock(), unsafe { &mut *self.value.get() })
     }
@@ -94,9 +95,7 @@ impl<L: RawExclusiveLockExt, T: ?Sized> RwLock<L, T> {
             &mut *self.value.get()
         }))
     }
-}
-
-impl<L: RawShareLockExt, T: ?Sized> RwLock<L, T> {
+    
     pub fn read(&self) -> ShareGuard<'_, L, T> {
         ShareGuard::new(self.lock.raw_shr_lock(), unsafe { &mut *self.value.get() })
     }

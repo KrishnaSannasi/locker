@@ -19,6 +19,7 @@ impl RawLock {
     }
 }
 
+unsafe impl crate::mutex::RawMutex for RawLock {}
 unsafe impl crate::RawLockInfo for RawLock {
     const INIT: Self = Self::new();
 
