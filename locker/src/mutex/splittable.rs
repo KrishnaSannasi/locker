@@ -162,11 +162,11 @@ impl RawLock {
 
 unsafe impl crate::RawLockInfo for RawLock {
     const INIT: Self = Self::new();
-    type UniqueGuardTraits = ();
+    type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
     fn uniq_lock(&self) {
         if !self.uniq_try_lock() {
@@ -192,7 +192,7 @@ unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
 
     /// # Safety
     ///
-    /// This unique lock must be locked before calling this function
+    /// This exclusive lock must be locked before calling this function
     #[inline]
     unsafe fn uniq_unlock(&self) {
         let state = self.state.load(Ordering::Relaxed) & Self::LOCK_BITS;
@@ -214,7 +214,7 @@ unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
     }
 }
 
-unsafe impl crate::unique_lock::SplittableUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
     unsafe fn uniq_split(&self) {
         self.state.fetch_and(Self::LOCK_INC, Ordering::Relaxed);
     }

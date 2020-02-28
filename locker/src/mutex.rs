@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 
-use crate::unique_lock::{RawUniqueLockExt, UniqueGuard};
+use crate::exclusive_lock::{RawExclusiveLockExt, ExclusiveGuard};
 
 #[cfg(feature = "extra")]
 pub mod global;
@@ -96,13 +96,13 @@ impl<L: crate::RawLockInfo, T> Mutex<L, T> {
     }
 }
 
-impl<L: RawUniqueLockExt, T: ?Sized> Mutex<L, T> {
-    pub fn lock(&self) -> UniqueGuard<'_, L, T> {
-        UniqueGuard::new(self.lock.raw_uniq_lock(), unsafe { &mut *self.value.get() })
+impl<L: RawExclusiveLockExt, T: ?Sized> Mutex<L, T> {
+    pub fn lock(&self) -> ExclusiveGuard<'_, L, T> {
+        ExclusiveGuard::new(self.lock.raw_uniq_lock(), unsafe { &mut *self.value.get() })
     }
 
-    pub fn try_lock(&self) -> Option<UniqueGuard<'_, L, T>> {
-        Some(UniqueGuard::new(self.lock.try_raw_uniq_lock()?, unsafe {
+    pub fn try_lock(&self) -> Option<ExclusiveGuard<'_, L, T>> {
+        Some(ExclusiveGuard::new(self.lock.try_raw_uniq_lock()?, unsafe {
             &mut *self.value.get()
         }))
     }

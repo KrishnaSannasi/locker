@@ -22,16 +22,16 @@ impl RawLock {
 unsafe impl crate::RawLockInfo for RawLock {
     const INIT: Self = Self::new();
 
-    type UniqueGuardTraits = (crate::NoSend, crate::NoSync);
+    type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
     fn uniq_lock(&self) {
         assert!(
             self.uniq_try_lock(),
-            "Can't lock a locked local unique lock"
+            "Can't lock a locked local exclusive lock"
         );
     }
 
@@ -56,7 +56,7 @@ unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
     }
 }
 
-unsafe impl crate::unique_lock::SplittableUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
     #[inline]
     unsafe fn uniq_split(&self) {
         let (lock_count, overflow) = self.lock_count.get().overflowing_add(1);

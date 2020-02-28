@@ -2,27 +2,27 @@ pub mod guard;
 #[doc(hidden)]
 pub mod raw;
 
-pub use guard::{MappedUniqueGuard, UniqueGuard};
-pub use raw::RawUniqueGuard;
+pub use guard::{MappedExclusiveGuard, ExclusiveGuard};
+pub use raw::RawExclusiveGuard;
 
 use crate::RawLockInfo;
 
-pub trait RawUniqueLockExt: RawUniqueLock + RawLockInfo + Sized {
-    fn raw_uniq_lock(&self) -> RawUniqueGuard<Self>;
+pub trait RawExclusiveLockExt: RawExclusiveLock + RawLockInfo + Sized {
+    fn raw_uniq_lock(&self) -> RawExclusiveGuard<Self>;
 
-    fn try_raw_uniq_lock(&self) -> Option<RawUniqueGuard<Self>>;
+    fn try_raw_uniq_lock(&self) -> Option<RawExclusiveGuard<Self>>;
 }
 
-impl<L: RawUniqueLock + RawLockInfo> RawUniqueLockExt for L
+impl<L: RawExclusiveLock + RawLockInfo> RawExclusiveLockExt for L
 where
-    Self::UniqueGuardTraits: crate::Inhabitted,
+    Self::ExclusiveGuardTraits: crate::Inhabitted,
 {
-    fn raw_uniq_lock(&self) -> RawUniqueGuard<Self> {
-        RawUniqueGuard::new(self, unsafe { std::mem::zeroed() })
+    fn raw_uniq_lock(&self) -> RawExclusiveGuard<Self> {
+        RawExclusiveGuard::new(self, unsafe { std::mem::zeroed() })
     }
 
-    fn try_raw_uniq_lock(&self) -> Option<RawUniqueGuard<Self>> {
-        RawUniqueGuard::try_new(self, unsafe { std::mem::zeroed() })
+    fn try_raw_uniq_lock(&self) -> Option<RawExclusiveGuard<Self>> {
+        RawExclusiveGuard::try_new(self, unsafe { std::mem::zeroed() })
     }
 }
 
@@ -31,7 +31,7 @@ where
 /// * `uniq_unlock` must be called before before `uniq_lock`,
 /// `uniq_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two,
 /// provided that `RawShareLock` is implemented)
-pub unsafe trait RawUniqueLock {
+pub unsafe trait RawExclusiveLock {
     /// uniq locks the lock
     ///
     /// blocks until lock is acquired
@@ -63,15 +63,15 @@ pub unsafe trait RawUniqueLock {
 /// `uniq_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two,
 /// provided that `RawShareLock` is implemented), where `n` is the number of times
 /// `uniq_lock` and `uniq_split` are called combined
-pub unsafe trait SplittableUniqueLock: RawUniqueLock {
+pub unsafe trait SplittableExclusiveLock: RawExclusiveLock {
     /// # Safety
     ///
-    /// * the caller must own a unique lock
+    /// * the caller must own a exclusive lock
     /// * the lock must not have been moved since it was locked
     unsafe fn uniq_split(&self);
 }
 
-pub unsafe trait RawUniqueLockFair: RawUniqueLock {
+pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     unsafe fn uniq_unlock_fair(&self);
     
     unsafe fn uniq_bump_fair(&self) {
@@ -80,7 +80,7 @@ pub unsafe trait RawUniqueLockFair: RawUniqueLock {
     }
 }
 
-unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &L {
+unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &L {
     #[inline(always)]
     fn uniq_lock(&self) {
         L::uniq_lock(self)
@@ -102,30 +102,7 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &L {
     }
 }
 
-unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for &mut L {
-    #[inline(always)]
-    fn uniq_lock(&self) {
-        L::uniq_lock(self)
-    }
-
-    #[inline(always)]
-    fn uniq_try_lock(&self) -> bool {
-        L::uniq_try_lock(self)
-    }
-
-    #[inline(always)]
-    unsafe fn uniq_unlock(&self) {
-        L::uniq_unlock(self)
-    }
-
-    #[inline(always)]
-    unsafe fn uniq_bump(&self) {
-        L::uniq_bump(self)
-    }
-}
-
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::Box<L> {
+unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &mut L {
     #[inline(always)]
     fn uniq_lock(&self) {
         L::uniq_lock(self)
@@ -148,7 +125,7 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::B
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::Arc<L> {
+unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Box<L> {
     #[inline(always)]
     fn uniq_lock(&self) {
         L::uniq_lock(self)
@@ -171,7 +148,7 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::A
 }
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::Rc<L> {
+unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Arc<L> {
     #[inline(always)]
     fn uniq_lock(&self) {
         L::uniq_lock(self)
@@ -193,13 +170,36 @@ unsafe impl<L: ?Sized + RawUniqueLock> RawUniqueLock for crate::alloc_prelude::R
     }
 }
 
-unsafe impl<L: ?Sized + SplittableUniqueLock> SplittableUniqueLock for &L {
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Rc<L> {
+    #[inline(always)]
+    fn uniq_lock(&self) {
+        L::uniq_lock(self)
+    }
+
+    #[inline(always)]
+    fn uniq_try_lock(&self) -> bool {
+        L::uniq_try_lock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_unlock(&self) {
+        L::uniq_unlock(self)
+    }
+
+    #[inline(always)]
+    unsafe fn uniq_bump(&self) {
+        L::uniq_bump(self)
+    }
+}
+
+unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &L {
     unsafe fn uniq_split(&self) {
         L::uniq_split(self)
     }
 }
 
-unsafe impl<L: ?Sized + SplittableUniqueLock> SplittableUniqueLock for &mut L {
+unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &mut L {
     unsafe fn uniq_split(&self) {
         L::uniq_split(self)
     }

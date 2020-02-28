@@ -9,7 +9,7 @@ const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
 
 // UnparkToken used to indicate that the mutex is being handed off to the target
 // thread directly without unlocking it.
-const TOKEN_HANDOFF_UNIQUE: UnparkToken = UnparkToken(1);
+const TOKEN_HANDOFF_EXCLUSIVE: UnparkToken = UnparkToken(1);
 // UnparkToken used to indicate that the mutex is being handed off to the target
 // thread directly without unlocking it.
 const TOKEN_HANDOFF_SHARED: UnparkToken = UnparkToken(2);
@@ -120,7 +120,7 @@ impl RawLock {
             } {
                 // The thread that unparked us passed the lock on to us
                 // directly without unlocking it.
-                ParkResult::Unparked(self::TOKEN_HANDOFF_UNIQUE) => return true,
+                ParkResult::Unparked(self::TOKEN_HANDOFF_EXCLUSIVE) => return true,
 
                 // The thread that unparked us passed the lock on to us
                 // directly without unlocking it.
@@ -135,7 +135,7 @@ impl RawLock {
 
                     while state < INC * 2 {
                         // if that was the last shared lock
-                        // then we can change it to a unique lock
+                        // then we can change it to a exclusive lock
                         // without having to reaquire the lock
 
                         if let Err(x) = self.state.compare_exchange_weak(
@@ -151,7 +151,7 @@ impl RawLock {
                         }
                     }
 
-                    // if we failed to acquire a unique lock before another shared lock
+                    // if we failed to acquire a exclusive lock before another shared lock
                     // acquired the lock
                     self.state.fetch_sub(INC, Ordering::Release);
                 }
@@ -189,7 +189,7 @@ impl RawLock {
                     self.state.fetch_and(!PARK_BIT, Ordering::Relaxed);
                 }
 
-                return TOKEN_HANDOFF_UNIQUE;
+                return TOKEN_HANDOFF_EXCLUSIVE;
             }
 
             // Clear the locked bit, and the parked bit as well if there
@@ -289,7 +289,7 @@ impl RawLock {
             } {
                 // The thread that unparked us passed the lock on to us
                 // directly without unlocking it.
-                ParkResult::Unparked(self::TOKEN_HANDOFF_UNIQUE) => {
+                ParkResult::Unparked(self::TOKEN_HANDOFF_EXCLUSIVE) => {
                     // remove the uniq bit, because we are now a shared lock
                     self.state.fetch_and(!UNIQ_BIT, Ordering::Relaxed);
                     return true;
@@ -380,11 +380,11 @@ unsafe impl crate::RawLockInfo for RawLock {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self::new();
 
-    type UniqueGuardTraits = (crate::NoSend, crate::NoSync);
+    type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 
-unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
     fn uniq_lock(&self) {
         if !self.uniq_try_lock() {
@@ -442,7 +442,7 @@ unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
     }
 }
 
-unsafe impl crate::unique_lock::SplittableUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
     unsafe fn uniq_split(&self) {
         self.split()
     }

@@ -1,4 +1,4 @@
-use crate::unique_lock::RawUniqueLock;
+use crate::exclusive_lock::RawExclusiveLock;
 use crate::RawLockInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -53,7 +53,7 @@ type Lock = crate::mutex::spin::RawLock;
 unsafe impl RawLockInfo for Global {
     const INIT: Self = Self;
 
-    type UniqueGuardTraits = <Lock as RawLockInfo>::UniqueGuardTraits;
+    type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;
 }
 
@@ -84,7 +84,7 @@ static GLOBAL: [Lock; 61] = [
     Lock::new(),
 ];
 
-unsafe impl RawUniqueLock for Global {
+unsafe impl RawExclusiveLock for Global {
     fn uniq_lock(&self) {
         GLOBAL[self.addr()].uniq_lock()
     }

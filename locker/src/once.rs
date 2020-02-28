@@ -1,4 +1,4 @@
-use crate::unique_lock::RawUniqueLock;
+use crate::exclusive_lock::RawExclusiveLock;
 use crate::RawLockInfo;
 
 use std::cell::UnsafeCell;
@@ -12,17 +12,17 @@ pub mod atomic;
 #[cfg(feature = "parking_lot_core")]
 pub mod local;
 
-pub trait AsRawUniqueLock {
-    fn as_raw_unique_lock(&self) -> &dyn RawUniqueLock;
+pub trait AsRawExclusiveLock {
+    fn as_raw_exclusive_lock(&self) -> &dyn RawExclusiveLock;
 }
 
-impl<L: RawUniqueLock> AsRawUniqueLock for L {
-    fn as_raw_unique_lock(&self) -> &dyn RawUniqueLock {
+impl<L: RawExclusiveLock> AsRawExclusiveLock for L {
+    fn as_raw_exclusive_lock(&self) -> &dyn RawExclusiveLock {
         self
     }
 }
 
-pub unsafe trait Finish: RawUniqueLock + AsRawUniqueLock {
+pub unsafe trait Finish: RawExclusiveLock + AsRawExclusiveLock {
     fn is_done(&self) -> bool;
 
     fn mark_done(&self);
@@ -63,7 +63,7 @@ impl OnceState {
 #[cold]
 #[inline(never)]
 fn force_call_once_slow(lock: &dyn Finish, use_lock: bool, f: &mut dyn FnMut(&OnceState)) {
-    struct LocalGuard<'a>(&'a dyn RawUniqueLock);
+    struct LocalGuard<'a>(&'a dyn RawExclusiveLock);
 
     impl Drop for LocalGuard<'_> {
         fn drop(&mut self) {
@@ -73,7 +73,7 @@ fn force_call_once_slow(lock: &dyn Finish, use_lock: bool, f: &mut dyn FnMut(&On
 
     let guard = if use_lock {
         lock.uniq_lock();
-        Some(LocalGuard(lock.as_raw_unique_lock()))
+        Some(LocalGuard(lock.as_raw_exclusive_lock()))
     } else {
         None
     };

@@ -5,7 +5,7 @@ use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::share_lock::{RawShareLock, RawShareLockExt, ShareGuard};
-use crate::unique_lock::RawUniqueLock;
+use crate::exclusive_lock::RawExclusiveLock;
 
 #[cfg(feature = "std")]
 pub mod prelude {
@@ -31,7 +31,7 @@ pub struct ReentrantMutex<L, I, T: ?Sized> {
 }
 
 pub struct ReentrantLock<L, I> {
-    unique: L,
+    exclusive: L,
     thread_info: I,
     thread: AtomicUsize,
     count: Cell<usize>,
@@ -40,10 +40,10 @@ pub struct ReentrantLock<L, I> {
 impl<L, I> ReentrantLock<L, I> {
     /// # Safety
     ///
-    /// `unique` must not be shared
-    pub const unsafe fn from_raw_parts(unique: L, thread_info: I) -> Self {
+    /// `exclusive` must not be shared
+    pub const unsafe fn from_raw_parts(exclusive: L, thread_info: I) -> Self {
         Self {
-            unique,
+            exclusive,
             thread_info,
             thread: AtomicUsize::new(0),
             count: Cell::new(0),
@@ -72,16 +72,16 @@ unsafe impl ThreadInfo for StdThreadInfo {
 unsafe impl<L: crate::RawLockInfo, I: ThreadInfo> crate::RawLockInfo for ReentrantLock<L, I> {
     const INIT: Self = unsafe { Self::from_raw_parts(L::INIT, I::INIT) };
 
-    type UniqueGuardTraits = std::convert::Infallible;
+    type ExclusiveGuardTraits = std::convert::Infallible;
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 
-unsafe impl<L: RawUniqueLock, I: ThreadInfo> RawShareLock for ReentrantLock<L, I> {
+unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for ReentrantLock<L, I> {
     fn shr_lock(&self) {
         let id = self.thread_info.id().get();
 
-        if self.unique.uniq_try_lock() {
-            // we acquired a unique lock
+        if self.exclusive.uniq_try_lock() {
+            // we acquired a exclusive lock
         } else {
             let old_id = self.thread.compare_and_swap(0, id, Ordering::Relaxed);
 
@@ -89,11 +89,11 @@ unsafe impl<L: RawUniqueLock, I: ThreadInfo> RawShareLock for ReentrantLock<L, I
                 unsafe { self.shr_split() }
                 return;
             } else {
-                self.unique.uniq_lock();
+                self.exclusive.uniq_lock();
             }
         }
 
-        // we acquired a unique lock
+        // we acquired a exclusive lock
 
         self.thread.store(id, Ordering::Relaxed);
         self.count.set(0);
@@ -102,8 +102,8 @@ unsafe impl<L: RawUniqueLock, I: ThreadInfo> RawShareLock for ReentrantLock<L, I
     fn shr_try_lock(&self) -> bool {
         let id = self.thread_info.id().get();
 
-        if self.unique.uniq_try_lock() {
-            // we acquired a unique lock
+        if self.exclusive.uniq_try_lock() {
+            // we acquired a exclusive lock
 
             self.thread.store(id, Ordering::Relaxed);
             self.count.set(0);
@@ -145,7 +145,7 @@ unsafe impl<L: RawUniqueLock, I: ThreadInfo> RawShareLock for ReentrantLock<L, I
         } else {
             // if all reentrant locks are released
 
-            self.unique.uniq_unlock()
+            self.exclusive.uniq_unlock()
         }
     }
 }
@@ -195,7 +195,7 @@ impl<L: crate::RawLockInfo, I: ThreadInfo, T> ReentrantMutex<L, I, T> {
     }
 }
 
-impl<L: RawUniqueLock + crate::RawLockInfo, I: ThreadInfo, T: ?Sized> ReentrantMutex<L, I, T> {
+impl<L: RawExclusiveLock + crate::RawLockInfo, I: ThreadInfo, T: ?Sized> ReentrantMutex<L, I, T> {
     pub fn lock(&self) -> ShareGuard<'_, ReentrantLock<L, I>, T> {
         ShareGuard::new(self.lock.raw_shr_lock(), unsafe { &mut *self.value.get() })
     }

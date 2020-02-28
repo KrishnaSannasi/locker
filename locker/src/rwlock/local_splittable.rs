@@ -33,11 +33,11 @@ unsafe impl crate::RawLockInfo for RawLock {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self::new();
 
-    type UniqueGuardTraits = (crate::NoSend, crate::NoSync);
+    type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 
-unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
     fn uniq_lock(&self) {
         assert!(self.uniq_try_lock(), "Can't lock a locked local lock");
@@ -70,7 +70,7 @@ unsafe impl crate::unique_lock::RawUniqueLock for RawLock {
     }
 }
 
-unsafe impl crate::unique_lock::SplittableUniqueLock for RawLock {
+unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
     unsafe fn uniq_split(&self) {
         let state = self.state.get();
 

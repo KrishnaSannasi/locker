@@ -30,7 +30,7 @@ pub unsafe trait RawLockInfo {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self;
 
-    type UniqueGuardTraits: Marker;
+    type ExclusiveGuardTraits: Marker;
     type ShareGuardTraits: Marker;
 }
 
@@ -75,7 +75,7 @@ pub mod reentrant;
 pub mod rwlock;
 pub mod share_lock;
 mod spin_wait;
-pub mod unique_lock;
+pub mod exclusive_lock;
 
 #[cfg(feature = "parking_lot_core")]
 pub mod condvar;

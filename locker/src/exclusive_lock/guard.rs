@@ -1,4 +1,4 @@
-use super::{RawUniqueGuard, RawUniqueLock, RawUniqueLockFair, SplittableUniqueLock};
+use super::{RawExclusiveGuard, RawExclusiveLock, RawExclusiveLockFair, SplittableExclusiveLock};
 use crate::RawLockInfo;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -8,28 +8,28 @@ pub enum Mapped {}
 
 pub struct TryMapError<E, G>(pub E, pub G);
 
-pub type MappedUniqueGuard<'a, T> = UniqueGuard<'a, T, Mapped>;
-pub struct UniqueGuard<'a, L: RawUniqueLock + RawLockInfo, T: ?Sized, St = Pure> {
-    raw: RawUniqueGuard<'a, L>,
+pub type MappedExclusiveGuard<'a, T> = ExclusiveGuard<'a, T, Mapped>;
+pub struct ExclusiveGuard<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St = Pure> {
+    raw: RawExclusiveGuard<'a, L>,
     value: *mut T,
     _repr: PhantomData<(&'a mut T, St)>,
 }
 
-unsafe impl<'a, L: RawUniqueLock + RawLockInfo, T: ?Sized + Send, St> Send
-    for UniqueGuard<'a, L, T, St>
+unsafe impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized + Send, St> Send
+    for ExclusiveGuard<'a, L, T, St>
 where
-    RawUniqueGuard<'a, L>: Send,
+    RawExclusiveGuard<'a, L>: Send,
 {
 }
-unsafe impl<'a, L: RawUniqueLock + RawLockInfo, T: ?Sized + Sync, St> Sync
-    for UniqueGuard<'a, L, T, St>
+unsafe impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized + Sync, St> Sync
+    for ExclusiveGuard<'a, L, T, St>
 where
-    RawUniqueGuard<'a, L>: Sync,
+    RawExclusiveGuard<'a, L>: Sync,
 {
 }
 
-impl<'a, L: RawUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L, T, St> {
-    pub fn new(raw: RawUniqueGuard<'a, L>, value: &'a mut T) -> Self {
+impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
+    pub fn new(raw: RawExclusiveGuard<'a, L>, value: &'a mut T) -> Self {
         Self {
             raw,
             value,
@@ -40,39 +40,39 @@ impl<'a, L: RawUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L, T, St
     /// # Safety
     ///
     /// TODO
-    pub unsafe fn raw(&self) -> &RawUniqueGuard<L> {
+    pub unsafe fn raw(&self) -> &RawExclusiveGuard<L> {
         &self.raw
     }
 
     pub fn map<F: FnOnce(&mut T) -> &mut U, U: ?Sized>(
         self,
         f: F,
-    ) -> UniqueGuard<'a, L, U, Mapped> {
+    ) -> ExclusiveGuard<'a, L, U, Mapped> {
         let value = f(unsafe { &mut *self.value });
 
-        UniqueGuard::new(self.raw, value)
+        ExclusiveGuard::new(self.raw, value)
     }
 
     pub fn try_map<F: FnOnce(&mut T) -> Result<&mut U, E>, E, U: ?Sized>(
         self,
         f: F,
-    ) -> Result<UniqueGuard<'a, L, U, Mapped>, TryMapError<E, Self>> {
+    ) -> Result<ExclusiveGuard<'a, L, U, Mapped>, TryMapError<E, Self>> {
         match f(unsafe { &mut *self.value }) {
-            Ok(value) => Ok(UniqueGuard::new(self.raw, value)),
+            Ok(value) => Ok(ExclusiveGuard::new(self.raw, value)),
             Err(e) => Err(TryMapError(e, self)),
         }
     }
 
-    pub fn into_raw_parts(self) -> (RawUniqueGuard<'a, L>, *mut T) {
+    pub fn into_raw_parts(self) -> (RawExclusiveGuard<'a, L>, *mut T) {
         (self.raw, self.value)
     }
 }
 
-impl<'a, L: SplittableUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L, T, St> {
+impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
     pub fn split_map<F, U: ?Sized, V: ?Sized>(
         self,
         f: F,
-    ) -> (UniqueGuard<'a, L, U, Mapped>, UniqueGuard<'a, L, V, Mapped>)
+    ) -> (ExclusiveGuard<'a, L, U, Mapped>, ExclusiveGuard<'a, L, V, Mapped>)
     where
         F: FnOnce(&mut T) -> (&mut U, &mut V),
     {
@@ -81,7 +81,7 @@ impl<'a, L: SplittableUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L
         let u_lock = self.raw.clone();
         let v_lock = self.raw;
 
-        (UniqueGuard::new(u_lock, u), UniqueGuard::new(v_lock, v))
+        (ExclusiveGuard::new(u_lock, u), ExclusiveGuard::new(v_lock, v))
     }
 
     #[allow(clippy::type_complexity)]
@@ -93,14 +93,14 @@ impl<'a, L: SplittableUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L
     >(
         self,
         f: F,
-    ) -> Result<(UniqueGuard<'a, L, U, Mapped>, UniqueGuard<'a, L, V, Mapped>), TryMapError<E, Self>>
+    ) -> Result<(ExclusiveGuard<'a, L, U, Mapped>, ExclusiveGuard<'a, L, V, Mapped>), TryMapError<E, Self>>
     {
         match f(unsafe { &mut *self.value }) {
             Ok((u, v)) => {
                 let u_lock = self.raw.clone();
                 let v_lock = self.raw;
 
-                Ok((UniqueGuard::new(u_lock, u), UniqueGuard::new(v_lock, v)))
+                Ok((ExclusiveGuard::new(u_lock, u), ExclusiveGuard::new(v_lock, v)))
             }
             Err(e) => Err(TryMapError(e, self)),
         }
@@ -115,7 +115,7 @@ impl<'a, L: SplittableUniqueLock + RawLockInfo, T: ?Sized, St> UniqueGuard<'a, L
     }
 }
 
-impl<L: RawUniqueLockFair + RawLockInfo, T: ?Sized> UniqueGuard<'_, L, T> {
+impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized> ExclusiveGuard<'_, L, T> {
     pub fn unlock_fair(g: Self) {
         g.raw.unlock_fair();
     }
@@ -129,7 +129,7 @@ impl<L: RawUniqueLockFair + RawLockInfo, T: ?Sized> UniqueGuard<'_, L, T> {
     }
 }
 
-impl<L: RawUniqueLock + RawLockInfo, T: ?Sized> Deref for UniqueGuard<'_, L, T> {
+impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized> Deref for ExclusiveGuard<'_, L, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -137,7 +137,7 @@ impl<L: RawUniqueLock + RawLockInfo, T: ?Sized> Deref for UniqueGuard<'_, L, T> 
     }
 }
 
-impl<L: RawUniqueLock + RawLockInfo, T: ?Sized> DerefMut for UniqueGuard<'_, L, T> {
+impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized> DerefMut for ExclusiveGuard<'_, L, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.value }
     }

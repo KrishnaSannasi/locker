@@ -2,7 +2,7 @@ use parking_lot_core::{
     self, ParkResult, RequeueOp, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN,
 };
 
-use crate::unique_lock::{RawUniqueLock, UniqueGuard};
+use crate::exclusive_lock::{RawExclusiveLock, ExclusiveGuard};
 use crate::RawLockInfo;
 
 use std::ptr;
@@ -24,7 +24,7 @@ pub struct Condvar<L> {
 /// # Safety
 ///
 /// `uniq_unlock` cannot call `parking_lot_core::park`, or panic
-pub unsafe trait Parkable: RawUniqueLock {
+pub unsafe trait Parkable: RawExclusiveLock {
     fn mark_parked_if_locked(&self) -> bool;
     fn mark_parked(&self);
 }
@@ -50,7 +50,7 @@ impl<L> Condvar<L> {
     }
 }
 
-impl<L: RawUniqueLock + RawLockInfo + Parkable> Condvar<L> {
+impl<L: RawExclusiveLock + RawLockInfo + Parkable> Condvar<L> {
     #[inline]
     pub fn notify_one(&self) -> bool {
         let lock = self.lock.load(Ordering::Relaxed);
@@ -231,15 +231,15 @@ impl<L: RawUniqueLock + RawLockInfo + Parkable> Condvar<L> {
         }
     }
 
-    pub fn wait<T: ?Sized>(&self, guard: &mut UniqueGuard<L, T>) {
+    pub fn wait<T: ?Sized>(&self, guard: &mut ExclusiveGuard<L, T>) {
         self.wait_until_internal(unsafe { guard.raw().inner() }, None);
     }
 
-    pub fn wait_until<T: ?Sized>(&self, guard: &mut UniqueGuard<L, T>, instant: Instant) {
+    pub fn wait_until<T: ?Sized>(&self, guard: &mut ExclusiveGuard<L, T>, instant: Instant) {
         self.wait_until_internal(unsafe { guard.raw().inner() }, Some(instant));
     }
 
-    pub fn wait_for<T: ?Sized>(&self, guard: &mut UniqueGuard<L, T>, duration: Duration) {
+    pub fn wait_for<T: ?Sized>(&self, guard: &mut ExclusiveGuard<L, T>, duration: Duration) {
         self.wait_until_internal(
             unsafe { guard.raw().inner() },
             Instant::now().checked_add(duration),
