@@ -67,9 +67,13 @@ unsafe impl crate::once::Finish for RawLock {
     }
 
     #[inline]
-    fn get_and_mark_poisoned(&self) -> bool {
-        let state = self.inner.or_tag(Self::POISON_BIT);
-        (state & Self::POISON_BIT) != 0
+    fn is_poisoned(&self) -> bool {
+        (self.inner.tag() & Self::POISON_BIT) != 0
+    }
+
+    #[inline]
+    fn mark_poisoned(&self) {
+        self.inner.or_tag(Self::POISON_BIT);
     }
 }
 

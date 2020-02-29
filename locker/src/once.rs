@@ -27,7 +27,9 @@ pub unsafe trait Finish: RawExclusiveLock + AsRawExclusiveLock {
 
     fn mark_done(&self);
 
-    fn get_and_mark_poisoned(&self) -> bool;
+    fn is_poisoned(&self) -> bool;
+
+    fn mark_poisoned(&self);
 }
 
 pub struct Once<L> {
@@ -72,11 +74,15 @@ impl OnceState {
 
 #[inline(always)]
 fn panic_on_poison(f: impl FnOnce()) -> impl FnOnce(&OnceState) {
+    #[cold]
+    fn handle_poison() {
+        panic!("tried to call `call_once*` on a poisoned `Once`");
+    }
+
     move |once_state| {
-        assert!(
-            !once_state.is_poisoned(),
-            "tried to call `call_once*` on a poisoned `Once`"
-        );
+        if once_state.is_poisoned() {
+            handle_poison()
+        }
 
         f()
     } 
@@ -84,9 +90,20 @@ fn panic_on_poison(f: impl FnOnce()) -> impl FnOnce(&OnceState) {
 
 #[cold]
 fn run_once_unchecked(lock: &dyn Finish, f: impl FnOnce(&OnceState)) {
-    let is_poisoned = lock.get_and_mark_poisoned();
+    struct Poison<'a>(&'a dyn Finish);
+
+    impl Drop for Poison<'_> {
+        fn drop(&mut self) {
+            self.0.mark_poisoned();
+        }
+    }
+
+    let is_poisoned = lock.is_poisoned();
+    let poison = Poison(lock);
     
     f(&OnceState(is_poisoned));
+
+    std::mem::forget(poison);
 
     lock.mark_done();
 }
