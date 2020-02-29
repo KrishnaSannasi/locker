@@ -1,4 +1,5 @@
-use std::cell::Cell;
+use crate::mutex::local_tagged::RawLock as Tagged;
+use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
 
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 pub type Once = crate::once::Once<RawLock>;
@@ -7,17 +8,16 @@ pub type Lazy<T, F> = crate::once::Lazy<RawLock, T, F, crate::once::Panic>;
 pub type RertyLazy<T, F> = crate::once::Lazy<RawLock, T, F, crate::once::Retry>;
 
 pub struct RawLock {
-    state: Cell<u8>,
+    inner: Tagged,
 }
 
 impl RawLock {
-    const LOCK_BIT: u8 = 0b001;
-    const DONE_BIT: u8 = 0b010;
-    const POISON_BIT: u8 = 0b100;
+    const DONE_BIT: u8 = 0b01;
+    const POISON_BIT: u8 = 0b10;
 
     pub const fn new() -> Self {
-        RawLock {
-            state: Cell::new(0),
+        Self {
+            inner: Tagged::new(),
         }
     }
 
@@ -45,22 +45,17 @@ impl RawLock {
 unsafe impl crate::once::Finish for RawLock {
     #[inline]
     fn is_done(&self) -> bool {
-        (self.state.get() & Self::LOCK_BIT) != 0
+        self.inner.tag() & Self::DONE_BIT != 0
     }
 
     #[inline]
     fn mark_done(&self) {
-        let state = self.state.get();
-
-        self.state.set(state | Self::DONE_BIT);
+        self.inner.or_tag(Self::DONE_BIT);
     }
 
     #[inline]
     fn get_and_mark_poisoned(&self) -> bool {
-        let state = self.state.get();
-
-        self.state.set(state | Self::POISON_BIT);
-
+        let state = self.inner.or_tag(Self::POISON_BIT);
         (state & Self::POISON_BIT) != 0
     }
 }
@@ -71,36 +66,24 @@ unsafe impl crate::RawLockInfo for RawLock {
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl RawExclusiveLock for RawLock {
     #[inline]
     fn uniq_lock(&self) {
-        assert!(
-            self.uniq_try_lock(),
-            "Can't lock a locked local exclusive lock"
-        );
+        self.inner.uniq_lock()
     }
 
     #[inline]
     fn uniq_try_lock(&self) -> bool {
-        let state = self.state.get();
-
-        self.state.set(state | Self::LOCK_BIT);
-
-        (state & Self::LOCK_BIT) == 0
+        self.inner.uniq_try_lock()
     }
 
-    /// # Safety
-    ///
-    /// This exclusive lock must be locked before calling this function
     #[inline]
     unsafe fn uniq_unlock(&self) {
-        let state = self.state.get();
+        self.inner.uniq_unlock()
+    }
 
-        debug_assert!(
-            (state & Self::LOCK_BIT) != 0,
-            "tried to unlock an unlocked uniq lock"
-        );
-
-        self.state.set(state & !Self::LOCK_BIT);
+    #[inline]
+    unsafe fn uniq_bump(&self) {
+        self.inner.uniq_bump()
     }
 }
