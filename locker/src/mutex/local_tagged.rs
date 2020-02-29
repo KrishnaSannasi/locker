@@ -3,15 +3,59 @@ use std::cell::Cell;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 
 pub struct RawLock {
-    lock: Cell<u8>,
+    state: Cell<u8>,
 }
 
 impl RawLock {
+    const LOCK_BIT: u8 = 1;
+
+    pub const TAG_BITS: u8 = 7;
+    const SHIFT: u8 = 8 - Self::TAG_BITS;
+    const MASK: u8 = !(!0 << Self::SHIFT);
+
     #[inline]
     pub const fn new() -> Self {
-        RawLock {
-            lock: Cell::new(false),
+        Self {
+            state: Cell::new(0),
         }
+    }
+
+    #[inline]
+    pub const fn with_tag(tag: u8) -> Self {
+        Self {
+            state: Cell::new(tag << Self::SHIFT),
+        }
+    }
+
+    pub fn tag(&self) -> u8 {
+        self.state.get() >> Self::SHIFT
+    }
+
+    pub fn and_tag(&self, tag: u8) -> u8 {
+        let tag = tag << Self::SHIFT | Self::MASK;
+        let state = self.state.get();
+
+        self.state.set(state & tag);
+
+        state >> Self::SHIFT
+    }
+
+    pub fn or_tag(&self, tag: u8) -> u8 {
+        let tag = tag << Self::SHIFT;
+
+        let state = self.state.get();
+
+        self.state.set(state | tag);
+
+        state >> Self::SHIFT
+    }
+
+    pub fn replace_tag(&self, tag: u8) -> u8 {
+        let state = self.state.get();
+
+        self.state.set((state & Self::MASK) | tag);
+
+        state >> Self::SHIFT
     }
 
     pub const fn mutex<T>(value: T) -> Mutex<T> {
@@ -32,20 +76,26 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     fn uniq_lock(&self) {
         assert!(
             self.uniq_try_lock(),
-            "Can't lock a locked local exclusive lock"
+            "Can't state a locked local exclusive state"
         );
     }
 
     #[inline]
     fn uniq_try_lock(&self) -> bool {
-        !self.lock.replace(true)
+        let state = self.state.get();
+
+        self.state.set(state | Self::LOCK_BIT);
+
+        state & Self::LOCK_BIT == 0
     }
 
     #[inline]
     unsafe fn uniq_unlock(&self) {
-        debug_assert!(self.lock.get(), "tried to unlock an unlocked uniq lock");
+        debug_assert!(self.state.get() & Self::LOCK_BIT != 0, "tried to unlock an unlocked uniq state");
 
-        self.lock.set(false);
+        let state = self.state.get();
+
+        self.state.set(state & !Self::LOCK_BIT);
     }
 
     #[inline]

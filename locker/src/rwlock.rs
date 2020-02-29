@@ -3,20 +3,17 @@ use std::cell::UnsafeCell;
 use crate::exclusive_lock::{RawExclusiveGuard, ExclusiveGuard};
 use crate::share_lock::{RawShareLock, RawShareGuard, ShareGuard};
 
-#[cfg(feature = "extra")]
-pub mod global;
-
-#[cfg(feature = "parking_lot_core")]
-pub mod simple;
-
-#[cfg(feature = "extra")]
-pub mod spin;
-
-#[cfg(feature = "extra")]
-pub mod local_simple;
-
-#[cfg(feature = "extra")]
-pub mod local_splittable;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "extra")] {
+        pub mod global;
+        pub mod spin;
+        pub mod local_simple;
+        pub mod local_splittable;
+        
+        #[cfg(feature = "parking_lot_core")]
+        pub mod simple;
+    }
+}
 
 pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock {}
 #[repr(C)]
