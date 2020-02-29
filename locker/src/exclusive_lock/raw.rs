@@ -1,5 +1,7 @@
-use super::{RawExclusiveLock, RawExclusiveLockFair, RawExclusiveLockDowngrade, SplittableExclusiveLock};
-use crate::{RawLockInfo, Inhabitted};
+use super::{
+    RawExclusiveLock, RawExclusiveLockDowngrade, RawExclusiveLockFair, SplittableExclusiveLock,
+};
+use crate::{Inhabitted, RawLockInfo};
 
 pub type RawExclusiveGuard<'a, L> =
     _RawExclusiveGuard<'a, L, <L as RawLockInfo>::ExclusiveGuardTraits>;

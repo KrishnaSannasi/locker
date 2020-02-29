@@ -1,10 +1,12 @@
-use crate::RawLockInfo;
-use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair, RawExclusiveLockDowngrade, SplittableExclusiveLock};
+use crate::exclusive_lock::{
+    RawExclusiveLock, RawExclusiveLockDowngrade, RawExclusiveLockFair, SplittableExclusiveLock,
+};
 use crate::share_lock::{RawShareLock, RawShareLockFair};
+use crate::RawLockInfo;
 
 use crate::mutex::RawMutex;
-use crate::rwlock::RawRwLock;
 use crate::reentrant::RawReentrantMutex;
+use crate::rwlock::RawRwLock;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Fair<L: ?Sized>(pub L);
@@ -50,14 +52,16 @@ unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for Fair<L> {
 
 unsafe impl<L: ?Sized> RawExclusiveLockDowngrade for Fair<L>
 where
-    L: RawExclusiveLockDowngrade + RawExclusiveLockFair + RawShareLockFair
+    L: RawExclusiveLockDowngrade + RawExclusiveLockFair + RawShareLockFair,
 {
     unsafe fn downgrade(&self) {
         self.0.downgrade()
     }
 }
 
-unsafe impl<L: ?Sized + SplittableExclusiveLock + RawExclusiveLockFair> SplittableExclusiveLock for Fair<L> {
+unsafe impl<L: ?Sized + SplittableExclusiveLock + RawExclusiveLockFair> SplittableExclusiveLock
+    for Fair<L>
+{
     unsafe fn exc_split(&self) {
         self.0.exc_split()
     }

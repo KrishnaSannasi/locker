@@ -1,5 +1,5 @@
 use super::{RawShareLock, RawShareLockFair};
-use crate::{RawLockInfo, Inhabitted};
+use crate::{Inhabitted, RawLockInfo};
 
 pub type RawShareGuard<'a, L> = _RawShareGuard<'a, L, <L as RawLockInfo>::ShareGuardTraits>;
 pub struct _RawShareGuard<'a, L: RawShareLock, Tr> {

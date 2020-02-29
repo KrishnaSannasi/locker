@@ -54,11 +54,11 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
                     _repr: PhantomData,
                 }
             }
-    
+
             pub fn raw(&self) -> &RawShareGuard<'a, L> {
                 &self.raw
             }
-    
+
             pub unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
                 &mut self.raw
             }

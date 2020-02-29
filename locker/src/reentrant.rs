@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 use std::num::NonZeroUsize;
 
-use crate::share_lock::{RawShareLock, RawShareGuard, ShareGuard};
+use crate::share_lock::{RawShareGuard, RawShareLock, ShareGuard};
 
 #[cfg(feature = "extra")]
 pub mod simple;
@@ -24,10 +24,7 @@ pub unsafe trait ThreadInfo {
     fn id(&self) -> NonZeroUsize;
 }
 
-pub unsafe trait RawReentrantMutex:
-    crate::RawLockInfo + RawShareLock
-{
-}
+pub unsafe trait RawReentrantMutex: crate::RawLockInfo + RawShareLock {}
 #[repr(C)]
 pub struct ReentrantMutex<L, T: ?Sized> {
     lock: L,
@@ -119,12 +116,7 @@ where
 {
     #[inline]
     pub fn lock(&self) -> ShareGuard<'_, L, T> {
-        unsafe {
-            ShareGuard::from_raw_parts(
-                RawShareGuard::new(&self.lock),
-                self.value.get()
-            )
-        }
+        unsafe { ShareGuard::from_raw_parts(RawShareGuard::new(&self.lock), self.value.get()) }
     }
 
     #[inline]

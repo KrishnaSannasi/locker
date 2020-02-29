@@ -1,7 +1,7 @@
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::time::Instant;
 use crate::exclusive_lock::RawExclusiveLock;
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
+use std::sync::atomic::{AtomicU8, Ordering};
+use std::time::Instant;
 
 // UnparkToken used to indicate that that the target thread should attempt to
 // state the mutex again as soon as it is unparked.
@@ -23,7 +23,7 @@ fn strongest_failure_ordering(order: Ordering) -> Ordering {
         SeqCst => SeqCst,
         Acquire => Acquire,
         AcqRel => Acquire,
-        _ => unreachable!()
+        _ => unreachable!(),
     }
 }
 
@@ -59,7 +59,7 @@ impl RawLock {
 
     pub fn and_tag(&self, tag: u8, order: Ordering) -> u8 {
         let tag = tag << Self::SHIFT | Self::MASK;
-        
+
         self.state.fetch_and(tag, order) >> Self::SHIFT
     }
 
@@ -74,21 +74,19 @@ impl RawLock {
     }
 
     pub fn exchange_tag(&self, tag: u8, success: Ordering, failure: Ordering) -> u8 {
-        let tag =  tag << Self::SHIFT;
+        let tag = tag << Self::SHIFT;
         let mut state = self.state.load(failure);
 
-        while let Err(x) = self.state.compare_exchange_weak(
-            state,
-            (state & Self::MASK) | tag,
-            success,
-            failure,
-        ) {
+        while let Err(x) =
+            self.state
+                .compare_exchange_weak(state, (state & Self::MASK) | tag, success, failure)
+        {
             state = x;
         }
-        
+
         state >> Self::SHIFT
     }
-    
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         unsafe { Mutex::from_raw_parts(Self::new(), value) }
     }
@@ -114,12 +112,16 @@ unsafe impl RawExclusiveLock for RawLock {
     fn exc_try_lock(&self) -> bool {
         let state = self.state.load(Ordering::Relaxed);
 
-        (state & Self::LOCK_BIT == 0) && self.state.compare_exchange(
-            state,
-            state | Self::LOCK_BIT,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ).is_ok()
+        (state & Self::LOCK_BIT == 0)
+            && self
+                .state
+                .compare_exchange(
+                    state,
+                    state | Self::LOCK_BIT,
+                    Ordering::Acquire,
+                    Ordering::Relaxed,
+                )
+                .is_ok()
     }
 
     #[inline]
@@ -135,7 +137,7 @@ unsafe impl RawExclusiveLock for RawLock {
                 Ordering::Release,
                 Ordering::Relaxed,
             ) {
-                state = x; 
+                state = x;
             }
         } else {
             self.unlock_slow(false);
@@ -168,7 +170,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
                 Ordering::Release,
                 Ordering::Relaxed,
             ) {
-                state = x; 
+                state = x;
             }
         } else {
             self.unlock_slow(true);
@@ -228,7 +230,9 @@ impl RawLock {
 
             // Park our thread until we are woken up by an unlock
             let addr = self as *const _ as usize;
-            let validate = || self.state.load(Ordering::Relaxed) & Self::MASK == Self::LOCK_BIT | Self::PARK_BIT;
+            let validate = || {
+                self.state.load(Ordering::Relaxed) & Self::MASK == Self::LOCK_BIT | Self::PARK_BIT
+            };
             let before_sleep = || {};
             let timed_out = |_, was_last_thread| {
                 // Clear the parked bit if we were the last parked thread

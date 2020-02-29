@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::{RawExclusiveGuard, ExclusiveGuard};
-use crate::share_lock::{RawShareLock, RawShareGuard, ShareGuard};
+use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveGuard};
+use crate::share_lock::{RawShareGuard, RawShareLock, ShareGuard};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
@@ -9,7 +9,7 @@ cfg_if::cfg_if! {
         pub mod spin;
         pub mod local_simple;
         pub mod local_splittable;
-        
+
         #[cfg(feature = "parking_lot_core")]
         pub mod simple;
     }
@@ -127,10 +127,9 @@ where
 {
     #[inline]
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe { ExclusiveGuard::from_raw_parts(
-            RawExclusiveGuard::new(&self.lock),
-            self.value.get()
-        ) }
+        unsafe {
+            ExclusiveGuard::from_raw_parts(RawExclusiveGuard::new(&self.lock), self.value.get())
+        }
     }
 
     #[inline]
@@ -145,10 +144,7 @@ where
 
     #[inline]
     pub fn read(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(
-            RawShareGuard::new(&self.lock),
-            self.value.get()
-        ) }
+        unsafe { ShareGuard::from_raw_parts(RawShareGuard::new(&self.lock), self.value.get()) }
     }
 
     #[inline]

@@ -91,7 +91,10 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
 
     #[inline]
     unsafe fn exc_unlock(&self) {
-        debug_assert!(self.state.get() & Self::LOCK_BIT != 0, "tried to unlock an unlocked exc state");
+        debug_assert!(
+            self.state.get() & Self::LOCK_BIT != 0,
+            "tried to unlock an unlocked exc state"
+        );
 
         let state = self.state.get();
 

@@ -1,12 +1,7 @@
 #![cfg_attr(not(any(feature = "std", feature = "parking_lot_core")), no_std)]
 #![cfg_attr(
     feature = "nightly",
-    feature(
-        optin_builtin_traits,
-        const_fn,
-        const_mut_refs,
-        const_raw_ptr_deref,
-    ),
+    feature(optin_builtin_traits, const_fn, const_mut_refs, const_raw_ptr_deref,)
 )]
 
 #[cfg(not(any(feature = "std", feature = "parking_lot_core")))]
@@ -36,7 +31,7 @@ macro_rules! defer {
 }
 
 /// # Safety
-/// 
+///
 /// * there can be no way to safely change the lock state
 /// outside of the trait methods provided by this crate
 /// * `INIT` (TODO)

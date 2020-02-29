@@ -1,5 +1,5 @@
-use crate::mutex::tagged::RawLock as Tagged;
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
+use crate::mutex::tagged::RawLock as Tagged;
 use std::sync::atomic::Ordering;
 
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
@@ -57,7 +57,7 @@ impl RawLock {
         unsafe {
             OnceCell {
                 once: Once::from_raw(Self::new()),
-                value: super::UnsafeCell::new(super::MaybeUninit::uninit())
+                value: super::UnsafeCell::new(super::MaybeUninit::uninit()),
             }
         }
     }

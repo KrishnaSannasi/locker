@@ -247,10 +247,7 @@ impl<L: RawExclusiveLock + RawLockInfo + Parkable> RawCondvar<L> {
         guard: &mut RawExclusiveGuard<L>,
         duration: Duration,
     ) -> WaitTimeoutResult {
-        self.exc_wait_until_internal(
-            guard.inner(),
-            Instant::now().checked_add(duration),
-        )
+        self.exc_wait_until_internal(guard.inner(), Instant::now().checked_add(duration))
     }
 }
 
@@ -287,9 +284,6 @@ impl<L: RawShareLock + RawLockInfo + Parkable> RawCondvar<L> {
         guard: &mut RawShareGuard<L>,
         duration: Duration,
     ) -> WaitTimeoutResult {
-        self.shr_wait_until_internal(
-            guard.inner(),
-            Instant::now().checked_add(duration),
-        )
+        self.shr_wait_until_internal(guard.inner(), Instant::now().checked_add(duration))
     }
 }

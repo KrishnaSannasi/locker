@@ -72,7 +72,9 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     }
 }
 
-pub unsafe trait RawExclusiveLockDowngrade: RawExclusiveLock + crate::share_lock::RawShareLock {
+pub unsafe trait RawExclusiveLockDowngrade:
+    RawExclusiveLock + crate::share_lock::RawShareLock
+{
     /// # Safety
     ///
     /// * the caller must own a exclusive lock

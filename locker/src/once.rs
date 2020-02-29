@@ -8,9 +8,9 @@ use std::mem::MaybeUninit;
 use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "parking_lot_core")]
-pub mod simple;
-#[cfg(feature = "parking_lot_core")]
 pub mod local;
+#[cfg(feature = "parking_lot_core")]
+pub mod simple;
 
 pub trait AsRawExclusiveLock {
     fn as_raw_exclusive_lock(&self) -> &dyn RawExclusiveLock;
@@ -85,14 +85,14 @@ fn panic_on_poison(f: impl FnOnce()) -> impl FnOnce(&OnceState) {
         }
 
         f()
-    } 
+    }
 }
 
 #[cold]
-fn run_once_unchecked(lock: &dyn Finish, f: impl FnOnce(&OnceState)) {
-    struct Poison<'a>(&'a dyn Finish);
+fn run_once_unchecked<F: ?Sized + Finish>(lock: &F, f: impl FnOnce(&OnceState)) {
+    struct Poison<'a, F: ?Sized + Finish>(&'a F);
 
-    impl Drop for Poison<'_> {
+    impl<F: ?Sized + Finish> Drop for Poison<'_, F> {
         fn drop(&mut self) {
             self.0.mark_poisoned();
         }
@@ -100,7 +100,7 @@ fn run_once_unchecked(lock: &dyn Finish, f: impl FnOnce(&OnceState)) {
 
     let is_poisoned = lock.is_poisoned();
     let poison = Poison(lock);
-    
+
     f(&OnceState(is_poisoned));
 
     std::mem::forget(poison);
@@ -167,9 +167,7 @@ unsafe impl<L: Finish, T: Send + Sync> Sync for OnceCell<L, T> where Once<L>: Sy
 impl<L: Finish, T> Drop for OnceCell<L, T> {
     fn drop(&mut self) {
         if std::mem::needs_drop::<T>() && self.once.lock.is_done() {
-            unsafe {
-                self.value.get().cast::<T>().drop_in_place()
-            }
+            unsafe { self.value.get().cast::<T>().drop_in_place() }
         }
     }
 }
@@ -243,7 +241,9 @@ impl<L: Finish, T> OnceCell<L, T> {
         if !self.once.lock.is_done() {
             let value = f();
 
-            run_once_unchecked(&self.once.lock, move |_once_state| unsafe { ptr.write(value) });
+            run_once_unchecked(&self.once.lock, move |_once_state| unsafe {
+                ptr.write(value)
+            });
         }
 
         unsafe { &mut *ptr }
@@ -460,7 +460,8 @@ pub struct RacyLazy<L: Finish, T, F = fn() -> T> {
     func: F,
 }
 
-unsafe impl<L: Finish, F: Send + Sync, T: Send + Sync> Sync for RacyLazy<L, T, F> where Once<L>: Sync {}
+unsafe impl<L: Finish, F: Send + Sync, T: Send + Sync> Sync for RacyLazy<L, T, F> where Once<L>: Sync
+{}
 
 impl<L: Finish + RawLockInfo, T, F: Fn() -> T> RacyLazy<L, T, F> {
     cfg_if::cfg_if! {

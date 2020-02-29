@@ -1,5 +1,5 @@
-use crate::mutex::local_tagged::RawLock as Tagged;
 use crate::exclusive_lock::RawExclusiveLock;
+use crate::mutex::local_tagged::RawLock as Tagged;
 
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 pub type Once = crate::once::Once<RawLock>;
@@ -34,7 +34,7 @@ impl RawLock {
         unsafe {
             OnceCell {
                 once: Once::from_raw(Self::new()),
-                value: super::UnsafeCell::new(super::MaybeUninit::uninit())
+                value: super::UnsafeCell::new(super::MaybeUninit::uninit()),
             }
         }
     }

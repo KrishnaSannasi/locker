@@ -1,4 +1,7 @@
-use super::{RawExclusiveGuard, RawExclusiveLock, RawExclusiveLockFair, SplittableExclusiveLock, RawExclusiveLockDowngrade};
+use super::{
+    RawExclusiveGuard, RawExclusiveLock, RawExclusiveLockDowngrade, RawExclusiveLockFair,
+    SplittableExclusiveLock,
+};
 use crate::RawLockInfo;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -42,7 +45,7 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
             pub const fn raw(&self) -> &RawExclusiveGuard<'a, L> {
                 &self.raw
             }
-        
+
             pub const unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
                 &mut self.raw
             }
@@ -58,7 +61,7 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
             pub fn raw(&self) -> &RawExclusiveGuard<'a, L> {
                 &self.raw
             }
-        
+
             pub unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
                 &mut self.raw
             }
@@ -169,12 +172,7 @@ where
     L::ShareGuardTraits: crate::Inhabitted,
 {
     pub fn downgrade(g: Self) -> crate::share_lock::ShareGuard<'a, L, T, St> {
-        unsafe {
-            crate::share_lock::ShareGuard::from_raw_parts(
-                g.raw.downgrade(),
-                g.value
-            )
-        }
+        unsafe { crate::share_lock::ShareGuard::from_raw_parts(g.raw.downgrade(), g.value) }
     }
 }
 

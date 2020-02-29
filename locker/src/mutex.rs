@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::{RawExclusiveGuard, ExclusiveGuard, RawExclusiveLock};
+use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveGuard, RawExclusiveLock};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
@@ -18,10 +18,7 @@ cfg_if::cfg_if! {
     }
 }
 
-pub unsafe trait RawMutex:
-    crate::RawLockInfo + RawExclusiveLock
-{
-}
+pub unsafe trait RawMutex: crate::RawLockInfo + RawExclusiveLock {}
 #[repr(C)]
 pub struct Mutex<L, T: ?Sized> {
     lock: L,
@@ -133,10 +130,7 @@ where
     #[inline]
     pub fn lock(&self) -> ExclusiveGuard<'_, L, T> {
         unsafe {
-            ExclusiveGuard::from_raw_parts(
-                RawExclusiveGuard::new(&self.lock),
-                self.value.get()
-            )
+            ExclusiveGuard::from_raw_parts(RawExclusiveGuard::new(&self.lock), self.value.get())
         }
     }
 
