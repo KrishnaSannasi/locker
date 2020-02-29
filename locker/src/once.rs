@@ -51,6 +51,14 @@ impl<L> Once<L> {
     }
 }
 
+#[cfg(feature = "nightly")]
+impl<L: Finish + RawLockInfo> Once<L> {
+    #[inline]
+    pub const fn new() -> Self {
+        unsafe { Self::from_raw(L::INIT) }
+    }
+}
+
 pub struct OnceState(bool);
 
 impl OnceState {
@@ -165,6 +173,14 @@ impl<L, T> OnceCell<L, T> {
     }
 }
 
+#[cfg(feature = "nightly")]
+impl<L: Finish + RawLockInfo, T> OnceCell<L, T> {
+    #[inline]
+    pub const fn new() -> Self {
+        unsafe { Self::from_once(Once::new()) }
+    }
+}
+
 impl<L: Finish, T> OnceCell<L, T> {
     #[inline]
     pub fn get(&self) -> Option<&T> {
@@ -212,6 +228,38 @@ pub struct Lazy<L, T, F, S> {
 }
 
 unsafe impl<L, F: Send + Sync, T: Send + Sync, S> Sync for Lazy<L, T, F, S> where Once<L>: Sync {}
+
+impl<L: Finish + RawLockInfo, T, F: FnOnce() -> T> Lazy<L, T, F, Panic> {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            #[inline]
+            pub const fn new(func: F) -> Self {
+                unsafe { Self::from_raw_parts(Once::new(), func) }
+            }
+        } else {
+            #[inline]
+            pub fn new(func: F) -> Self {
+                unsafe { Self::from_raw_parts(Once::default(), func) }
+            }
+        }
+    }
+}
+
+impl<L: Finish + RawLockInfo, T, F: FnMut() -> T> Lazy<L, T, F, Retry> {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            #[inline]
+            pub const fn new_retry(func: F) -> Self {
+                unsafe { Self::from_raw_parts(Once::new(), func) }
+            }
+        } else {
+            #[inline]
+            pub fn new_retry(func: F) -> Self {
+                unsafe { Self::from_raw_parts(Once::default(), func) }
+            }
+        }
+    }
+}
 
 impl<L, F, T, S> Lazy<L, T, F, S> {
     /// # Safety

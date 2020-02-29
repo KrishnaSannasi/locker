@@ -29,20 +29,40 @@ where
 }
 
 impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
-    pub unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: *mut T) -> Self {
-        Self {
-            raw,
-            value,
-            _repr: PhantomData,
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            pub const unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: *mut T) -> Self {
+                Self {
+                    raw,
+                    value,
+                    _repr: PhantomData,
+                }
+            }
+
+            pub const unsafe fn raw(&self) -> &RawExclusiveGuard<'a, L> {
+                &self.raw
+            }
+        
+            pub const unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
+                &mut self.raw
+            }
+        } else {
+            pub unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: *mut T) -> Self {
+                Self {
+                    raw,
+                    value,
+                    _repr: PhantomData,
+                }
+            }
+
+            pub unsafe fn raw(&self) -> &RawExclusiveGuard<'a, L> {
+                &self.raw
+            }
+        
+            pub unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
+                &mut self.raw
+            }
         }
-    }
-
-    pub unsafe fn raw(&self) -> &RawExclusiveGuard<'a, L> {
-        &self.raw
-    }
-
-    pub unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
-        &mut self.raw
     }
 
     pub fn map<F: FnOnce(&mut T) -> &mut U, U: ?Sized>(

@@ -1,4 +1,13 @@
 #![cfg_attr(not(any(feature = "std", feature = "parking_lot_core")), no_std)]
+#![cfg_attr(
+    feature = "nightly",
+    feature(
+        optin_builtin_traits,
+        const_fn,
+        const_mut_refs,
+        const_raw_ptr_deref,
+    ),
+)]
 
 #[cfg(not(any(feature = "std", feature = "parking_lot_core")))]
 extern crate core as std;
@@ -45,13 +54,25 @@ impl Inhabitted for () {
 }
 impl Marker for std::convert::Infallible {}
 
-#[derive(Default, Clone, Copy)]
-pub struct NoSend(std::marker::PhantomData<*const ()>);
-unsafe impl Sync for NoSend {}
+cfg_if::cfg_if! {
+    if #[cfg(feature = "nightly")] {
+        #[derive(Default, Clone, Copy)]
+        pub struct NoSend(std::marker::PhantomData<()>);
+        impl !Send for NoSync {}
 
-#[derive(Default, Clone, Copy)]
-pub struct NoSync(std::marker::PhantomData<*const ()>);
-unsafe impl Send for NoSync {}
+        #[derive(Default, Clone, Copy)]
+        pub struct NoSync(std::marker::PhantomData<()>);
+        impl !Sync for NoSync {}
+    } else {
+        #[derive(Default, Clone, Copy)]
+        pub struct NoSend(std::marker::PhantomData<*const ()>);
+        unsafe impl Sync for NoSend {}
+
+        #[derive(Default, Clone, Copy)]
+        pub struct NoSync(std::marker::PhantomData<*const ()>);
+        unsafe impl Send for NoSync {}
+    }
+}
 
 impl Marker for NoSend {}
 impl Inhabitted for NoSend {

@@ -29,20 +29,40 @@ where
 }
 
 impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> {
-    pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: *const T) -> Self {
-        Self {
-            raw,
-            value,
-            _repr: PhantomData,
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            pub const unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: *const T) -> Self {
+                Self {
+                    raw,
+                    value,
+                    _repr: PhantomData,
+                }
+            }
+
+            pub const unsafe fn raw(&self) -> &RawShareGuard<'a, L> {
+                &self.raw
+            }
+
+            pub const unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
+                &mut self.raw
+            }
+        } else {
+            pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: *const T) -> Self {
+                Self {
+                    raw,
+                    value,
+                    _repr: PhantomData,
+                }
+            }
+    
+            pub unsafe fn raw(&self) -> &RawShareGuard<'a, L> {
+                &self.raw
+            }
+    
+            pub unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
+                &mut self.raw
+            }
         }
-    }
-
-    pub unsafe fn raw(&self) -> &RawShareGuard<'a, L> {
-        &self.raw
-    }
-
-    pub unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
-        &mut self.raw
     }
 
     pub fn map<F: FnOnce(&T) -> &U, U: ?Sized>(self, f: F) -> ShareGuard<'a, L, U, Mapped> {

@@ -80,194 +80,194 @@ pub unsafe trait RawExclusiveLockDowngrade: RawExclusiveLock + crate::share_lock
     unsafe fn downgrade(&self);
 }
 
-unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &L {
-    #[inline(always)]
-    fn uniq_lock(&self) {
-        L::uniq_lock(self)
-    }
+// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &L {
+//     #[inline(always)]
+//     fn uniq_lock(&self) {
+//         L::uniq_lock(self)
+//     }
 
-    #[inline(always)]
-    fn uniq_try_lock(&self) -> bool {
-        L::uniq_try_lock(self)
-    }
+//     #[inline(always)]
+//     fn uniq_try_lock(&self) -> bool {
+//         L::uniq_try_lock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_unlock(&self) {
-        L::uniq_unlock(self)
-    }
+//     #[inline(always)]
+//     unsafe fn uniq_unlock(&self) {
+//         L::uniq_unlock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump(&self) {
-        L::uniq_bump(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump(&self) {
+//         L::uniq_bump(self)
+//     }
+// }
 
-unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &mut L {
-    #[inline(always)]
-    fn uniq_lock(&self) {
-        L::uniq_lock(self)
-    }
+// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &mut L {
+//     #[inline(always)]
+//     fn uniq_lock(&self) {
+//         L::uniq_lock(self)
+//     }
 
-    #[inline(always)]
-    fn uniq_try_lock(&self) -> bool {
-        L::uniq_try_lock(self)
-    }
+//     #[inline(always)]
+//     fn uniq_try_lock(&self) -> bool {
+//         L::uniq_try_lock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_unlock(&self) {
-        L::uniq_unlock(self)
-    }
+//     #[inline(always)]
+//     unsafe fn uniq_unlock(&self) {
+//         L::uniq_unlock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump(&self) {
-        L::uniq_bump(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump(&self) {
+//         L::uniq_bump(self)
+//     }
+// }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Box<L> {
-    #[inline(always)]
-    fn uniq_lock(&self) {
-        L::uniq_lock(self)
-    }
+// #[cfg(any(feature = "std", feature = "alloc"))]
+// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Box<L> {
+//     #[inline(always)]
+//     fn uniq_lock(&self) {
+//         L::uniq_lock(self)
+//     }
 
-    #[inline(always)]
-    fn uniq_try_lock(&self) -> bool {
-        L::uniq_try_lock(self)
-    }
+//     #[inline(always)]
+//     fn uniq_try_lock(&self) -> bool {
+//         L::uniq_try_lock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_unlock(&self) {
-        L::uniq_unlock(self)
-    }
+//     #[inline(always)]
+//     unsafe fn uniq_unlock(&self) {
+//         L::uniq_unlock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump(&self) {
-        L::uniq_bump(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump(&self) {
+//         L::uniq_bump(self)
+//     }
+// }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Arc<L> {
-    #[inline(always)]
-    fn uniq_lock(&self) {
-        L::uniq_lock(self)
-    }
+// #[cfg(any(feature = "std", feature = "alloc"))]
+// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Arc<L> {
+//     #[inline(always)]
+//     fn uniq_lock(&self) {
+//         L::uniq_lock(self)
+//     }
 
-    #[inline(always)]
-    fn uniq_try_lock(&self) -> bool {
-        L::uniq_try_lock(self)
-    }
+//     #[inline(always)]
+//     fn uniq_try_lock(&self) -> bool {
+//         L::uniq_try_lock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_unlock(&self) {
-        L::uniq_unlock(self)
-    }
+//     #[inline(always)]
+//     unsafe fn uniq_unlock(&self) {
+//         L::uniq_unlock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump(&self) {
-        L::uniq_bump(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump(&self) {
+//         L::uniq_bump(self)
+//     }
+// }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Rc<L> {
-    #[inline(always)]
-    fn uniq_lock(&self) {
-        L::uniq_lock(self)
-    }
+// #[cfg(any(feature = "std", feature = "alloc"))]
+// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Rc<L> {
+//     #[inline(always)]
+//     fn uniq_lock(&self) {
+//         L::uniq_lock(self)
+//     }
 
-    #[inline(always)]
-    fn uniq_try_lock(&self) -> bool {
-        L::uniq_try_lock(self)
-    }
+//     #[inline(always)]
+//     fn uniq_try_lock(&self) -> bool {
+//         L::uniq_try_lock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_unlock(&self) {
-        L::uniq_unlock(self)
-    }
+//     #[inline(always)]
+//     unsafe fn uniq_unlock(&self) {
+//         L::uniq_unlock(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump(&self) {
-        L::uniq_bump(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump(&self) {
+//         L::uniq_bump(self)
+//     }
+// }
 
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &L {
-    #[inline(always)]
-    unsafe fn uniq_unlock_fair(&self) {
-        L::uniq_unlock_fair(self)
-    }
+// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &L {
+//     #[inline(always)]
+//     unsafe fn uniq_unlock_fair(&self) {
+//         L::uniq_unlock_fair(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump_fair(&self) {
-        L::uniq_bump_fair(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump_fair(&self) {
+//         L::uniq_bump_fair(self)
+//     }
+// }
 
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &mut L {
-    #[inline(always)]
-    unsafe fn uniq_unlock_fair(&self) {
-        L::uniq_unlock_fair(self)
-    }
+// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &mut L {
+//     #[inline(always)]
+//     unsafe fn uniq_unlock_fair(&self) {
+//         L::uniq_unlock_fair(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump_fair(&self) {
-        L::uniq_bump_fair(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump_fair(&self) {
+//         L::uniq_bump_fair(self)
+//     }
+// }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
-    for crate::alloc_prelude::Box<L>
-{
-    #[inline(always)]
-    unsafe fn uniq_unlock_fair(&self) {
-        L::uniq_unlock_fair(self)
-    }
+// #[cfg(any(feature = "std", feature = "alloc"))]
+// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
+//     for crate::alloc_prelude::Box<L>
+// {
+//     #[inline(always)]
+//     unsafe fn uniq_unlock_fair(&self) {
+//         L::uniq_unlock_fair(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump_fair(&self) {
-        L::uniq_bump_fair(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump_fair(&self) {
+//         L::uniq_bump_fair(self)
+//     }
+// }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
-    for crate::alloc_prelude::Arc<L>
-{
-    #[inline(always)]
-    unsafe fn uniq_unlock_fair(&self) {
-        L::uniq_unlock_fair(self)
-    }
+// #[cfg(any(feature = "std", feature = "alloc"))]
+// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
+//     for crate::alloc_prelude::Arc<L>
+// {
+//     #[inline(always)]
+//     unsafe fn uniq_unlock_fair(&self) {
+//         L::uniq_unlock_fair(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump_fair(&self) {
-        L::uniq_bump_fair(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump_fair(&self) {
+//         L::uniq_bump_fair(self)
+//     }
+// }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Rc<L> {
-    #[inline(always)]
-    unsafe fn uniq_unlock_fair(&self) {
-        L::uniq_unlock_fair(self)
-    }
+// #[cfg(any(feature = "std", feature = "alloc"))]
+// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Rc<L> {
+//     #[inline(always)]
+//     unsafe fn uniq_unlock_fair(&self) {
+//         L::uniq_unlock_fair(self)
+//     }
 
-    #[inline(always)]
-    unsafe fn uniq_bump_fair(&self) {
-        L::uniq_bump_fair(self)
-    }
-}
+//     #[inline(always)]
+//     unsafe fn uniq_bump_fair(&self) {
+//         L::uniq_bump_fair(self)
+//     }
+// }
 
-unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &L {
-    unsafe fn uniq_split(&self) {
-        L::uniq_split(self)
-    }
-}
+// unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &L {
+//     unsafe fn uniq_split(&self) {
+//         L::uniq_split(self)
+//     }
+// }
 
-unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &mut L {
-    unsafe fn uniq_split(&self) {
-        L::uniq_split(self)
-    }
-}
+// unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &mut L {
+//     unsafe fn uniq_split(&self) {
+//         L::uniq_split(self)
+//     }
+// }

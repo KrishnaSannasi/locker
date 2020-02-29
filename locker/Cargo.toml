@@ -12,6 +12,7 @@ default = ['parking_lot_core', 'extra', 'std']
 extra = []
 std = []
 alloc = []
+nightly = []
 
 [dependencies]
 cfg-if = '*'

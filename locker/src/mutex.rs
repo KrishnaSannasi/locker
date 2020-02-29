@@ -93,20 +93,48 @@ impl<L, T: ?Sized> Mutex<L, T> {
     }
 
     #[inline]
-    pub unsafe fn raw(&self) -> &L {
+    pub const unsafe fn raw(&self) -> &L {
         &self.lock
     }
 
-    #[inline]
-    pub fn get_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.value.get() }
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            #[inline]
+            pub const unsafe fn raw_mut(&mut self) -> &mut L {
+                &mut self.lock
+            }
+
+            #[inline]
+            pub const fn get_mut(&mut self) -> &mut T {
+                unsafe { &mut *self.value.get() }
+            }
+        } else {
+            #[inline]
+            pub unsafe fn raw_mut(&mut self) -> &mut L {
+                &mut self.lock
+            }
+
+            #[inline]
+            pub fn get_mut(&mut self) -> &mut T {
+                unsafe { &mut *self.value.get() }
+            }
+        }
     }
 }
 
 impl<L: RawMutex, T> Mutex<L, T> {
-    #[inline]
-    pub fn new(value: T) -> Self {
-        unsafe { Self::from_raw_parts(L::INIT, value) }
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            #[inline]
+            pub const fn new(value: T) -> Self {
+                unsafe { Self::from_raw_parts(L::INIT, value) }
+            }
+        } else {
+            #[inline]
+            pub fn new(value: T) -> Self {
+                unsafe { Self::from_raw_parts(L::INIT, value) }
+            }
+        }
     }
 }
 

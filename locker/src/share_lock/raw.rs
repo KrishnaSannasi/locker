@@ -17,11 +17,22 @@ impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L>
 where
     L::ShareGuardTraits: Inhabitted,
 {
-    /// # Safety
-    ///
-    /// The share lock must be held
-    pub unsafe fn from_raw(lock: &'a L) -> Self {
-        Self { lock, _traits: Inhabitted::INIT }
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            /// # Safety
+            ///
+            /// The share lock must be held
+            pub const unsafe fn from_raw(lock: &'a L) -> Self {
+                Self { lock, _traits: Inhabitted::INIT }
+            }
+        } else {
+            /// # Safety
+            ///
+            /// The share lock must be held
+            pub unsafe fn from_raw(lock: &'a L) -> Self {
+                Self { lock, _traits: Inhabitted::INIT }
+            }
+        }
     }
 
     pub fn new(lock: &'a L) -> Self {
