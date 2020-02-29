@@ -34,6 +34,8 @@ pub struct Once<L> {
     lock: L,
 }
 
+impl<L: Finish> std::panic::RefUnwindSafe for Once<L> {}
+
 impl<L: RawLockInfo> Default for Once<L> {
     #[inline]
     fn default() -> Self {
@@ -86,11 +88,13 @@ fn force_call_once_slow(lock: &dyn Finish, use_lock: bool, f: &mut dyn FnMut(&On
         None
     };
 
-    let is_poisoned = lock.get_and_mark_poisoned();
+    if !use_lock || !lock.is_done() {
+        let is_poisoned = lock.get_and_mark_poisoned();
+        
+        f(&OnceState(is_poisoned));
 
-    f(&OnceState(is_poisoned));
-
-    lock.mark_done();
+        lock.mark_done();
+    }
 
     drop(guard);
 }
