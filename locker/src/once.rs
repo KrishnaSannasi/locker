@@ -240,8 +240,11 @@ impl<L: Finish, T> OnceCell<L, T> {
     pub fn get_or_init_mut(&mut self, f: impl FnOnce() -> T) -> &mut T {
         let ptr = self.value.get().cast::<T>();
 
-        self.once
-            .force_call_once_mut(move |_once_state| unsafe { ptr.write(f()) });
+        if !self.once.lock.is_done() {
+            let value = f();
+
+            run_once_unchecked(&self.once.lock, move |_once_state| unsafe { ptr.write(value) });
+        }
 
         unsafe { &mut *ptr }
     }
