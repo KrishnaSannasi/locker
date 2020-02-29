@@ -35,6 +35,13 @@ macro_rules! defer {
     };
 }
 
+/// # Safety
+/// 
+/// * there can be no way to safely change the lock state
+/// outside of the trait methods provided by this crate
+/// * `INIT` (TODO)
+/// * `ExclusiveGuardTraits` (TODO)
+/// * `ShareGuardTraits` (TODO)
 pub unsafe trait RawLockInfo {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self;

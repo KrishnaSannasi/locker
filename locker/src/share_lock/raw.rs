@@ -65,11 +65,12 @@ impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {
         f()
     }
 
-    /// # Safety
-    ///
-    /// TODO
-    pub unsafe fn inner(&self) -> &L {
+    pub fn inner(&self) -> &L {
         self.lock
+    }
+
+    pub fn into_inner(self) -> &'a L {
+        std::mem::ManuallyDrop::new(self).lock
     }
 }
 

@@ -16,7 +16,7 @@ const TOKEN_HANDOFF_EXCLUSIVE: UnparkToken = UnparkToken(1);
 const TOKEN_HANDOFF_SHARED: UnparkToken = UnparkToken(2);
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
@@ -168,17 +168,13 @@ unsafe impl RawExclusiveLockDowngrade for RawLock {
     unsafe fn downgrade(&self) {
         let mut state = self.state.load(Ordering::Relaxed);
 
-        loop {
-            if let Err(x) = self.state.compare_exchange_weak(
-                state,
-                (state & Self::PARK_BIT) | Self::INC,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                state = x;
-            } else {
-                break;
-            }
+        while let Err(x) = self.state.compare_exchange_weak(
+            state,
+            (state & Self::PARK_BIT) | Self::INC,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            state = x;
         }
     }
 }
@@ -201,7 +197,7 @@ impl RawLock {
             }
         }
 
-        self.shr_unlock_slow(true);
+        self.shr_unlock_slow(force_fair);
     }
 
     #[cold]

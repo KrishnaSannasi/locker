@@ -68,7 +68,7 @@ impl<L, T> ReentrantMutex<L, T> {
 
 impl<L, T: ?Sized> ReentrantMutex<L, T> {
     #[inline]
-    pub const unsafe fn raw(&self) -> &L {
+    pub const fn raw(&self) -> &L {
         &self.lock
     }
 

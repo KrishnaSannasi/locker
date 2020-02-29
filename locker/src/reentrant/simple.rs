@@ -40,7 +40,7 @@ impl<L, I> RawReentrantLock<L, I> {
         }
     }
 
-    pub unsafe fn inner(&self) -> &L {
+    pub fn inner(&self) -> &L {
         &self.inner
     }
 

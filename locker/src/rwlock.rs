@@ -78,7 +78,7 @@ impl<L, T: ?Sized> RwLock<L, T> {
     }
 
     #[inline]
-    pub const unsafe fn raw(&self) -> &L {
+    pub const fn raw(&self) -> &L {
         &self.lock
     }
 

@@ -39,12 +39,16 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
                 }
             }
 
-            pub const unsafe fn raw(&self) -> &RawShareGuard<'a, L> {
+            pub const fn raw(&self) -> &RawShareGuard<'a, L> {
                 &self.raw
             }
 
             pub const unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
                 &mut self.raw
+            }
+
+            pub const fn into_raw_parts(self) -> (RawShareGuard<'a, L>, *const T) {
+                (self.raw, self.value)
             }
         } else {
             pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: *const T) -> Self {
@@ -55,12 +59,16 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
                 }
             }
     
-            pub unsafe fn raw(&self) -> &RawShareGuard<'a, L> {
+            pub fn raw(&self) -> &RawShareGuard<'a, L> {
                 &self.raw
             }
     
             pub unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
                 &mut self.raw
+            }
+
+            pub fn into_raw_parts(self) -> (RawShareGuard<'a, L>, *const T) {
+                (self.raw, self.value)
             }
         }
     }
@@ -79,10 +87,6 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
             Ok(value) => Ok(unsafe { ShareGuard::from_raw_parts(self.raw, value) }),
             Err(e) => Err(TryMapError(e, self)),
         }
-    }
-
-    pub fn into_raw_parts(self) -> (RawShareGuard<'a, L>, *const T) {
-        (self.raw, self.value)
     }
 
     pub fn split_map<F, U: ?Sized, V: ?Sized>(

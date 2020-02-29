@@ -43,7 +43,7 @@ impl Global {
         a: &ReentrantMutex<T>,
         b: &ReentrantMutex<U>,
     ) -> bool {
-        unsafe { a.raw().addr() == b.raw().addr() }
+        a.raw().addr() == b.raw().addr()
     }
 }
 

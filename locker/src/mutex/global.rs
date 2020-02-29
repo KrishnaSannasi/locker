@@ -40,7 +40,7 @@ impl Global {
 
     #[inline]
     pub fn will_mutex_contend<T: ?Sized, U: ?Sized>(a: &Mutex<T>, b: &Mutex<U>) -> bool {
-        unsafe { a.raw().addr() == b.raw().addr() }
+        a.raw().addr() == b.raw().addr()
     }
 }
 
