@@ -96,6 +96,7 @@ impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {
     const INIT: Self = (A::INIT, B::INIT);
 }
 
+pub mod combinators;
 mod defer;
 pub mod exclusive_lock;
 pub mod mutex;
