@@ -10,7 +10,7 @@ pub struct _RawExclusiveGuard<'a, L: RawExclusiveLock, Tr> {
 
 impl<'a, L: RawExclusiveLock, Tr> Drop for _RawExclusiveGuard<'_, L, Tr> {
     fn drop(&mut self) {
-        unsafe { self.lock.uniq_unlock() }
+        unsafe { self.lock.exc_unlock() }
     }
 }
 
@@ -37,13 +37,13 @@ where
     }
 
     pub fn new(lock: &'a L) -> Self {
-        lock.uniq_lock();
+        lock.exc_lock();
 
         unsafe { Self::from_raw(lock) }
     }
 
     pub fn try_new(lock: &'a L) -> Option<Self> {
-        if lock.uniq_try_lock() {
+        if lock.exc_try_lock() {
             unsafe { Some(Self::from_raw(lock)) }
         } else {
             None
@@ -54,15 +54,15 @@ where
 impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
     pub fn bump(&mut self) {
         unsafe {
-            self.lock.uniq_bump();
+            self.lock.exc_bump();
         }
     }
 
     pub fn unlocked<R>(&mut self, f: impl FnOnce() -> R) -> R {
         unsafe {
-            self.lock.uniq_unlock();
+            self.lock.exc_unlock();
         }
-        defer!(self.lock.uniq_lock());
+        defer!(self.lock.exc_lock());
         f()
     }
 
@@ -79,21 +79,21 @@ impl<L: RawExclusiveLockFair + RawLockInfo> RawExclusiveGuard<'_, L> {
     pub fn unlock_fair(self) {
         let g = std::mem::ManuallyDrop::new(self);
         unsafe {
-            g.lock.uniq_unlock_fair();
+            g.lock.exc_unlock_fair();
         }
     }
 
     pub fn bump_fair(&mut self) {
         unsafe {
-            self.lock.uniq_bump_fair();
+            self.lock.exc_bump_fair();
         }
     }
 
     pub fn unlocked_fair<R>(&mut self, f: impl FnOnce() -> R) -> R {
         unsafe {
-            self.lock.uniq_unlock_fair();
+            self.lock.exc_unlock_fair();
         }
-        defer!(self.lock.uniq_lock());
+        defer!(self.lock.exc_lock());
         f()
     }
 }
@@ -114,7 +114,7 @@ where
 impl<L: SplittableExclusiveLock + RawLockInfo> Clone for RawExclusiveGuard<'_, L> {
     fn clone(&self) -> Self {
         unsafe {
-            self.lock.uniq_split();
+            self.lock.exc_split();
             RawExclusiveGuard {
                 lock: self.lock,
                 _traits: self._traits,

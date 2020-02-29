@@ -73,15 +73,15 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
+    fn exc_lock(&self) {
         assert!(
-            self.uniq_try_lock(),
+            self.exc_try_lock(),
             "Can't state a locked local exclusive state"
         );
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         let state = self.state.get();
 
         self.state.set(state | Self::LOCK_BIT);
@@ -90,8 +90,8 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
-        debug_assert!(self.state.get() & Self::LOCK_BIT != 0, "tried to unlock an unlocked uniq state");
+    unsafe fn exc_unlock(&self) {
+        debug_assert!(self.state.get() & Self::LOCK_BIT != 0, "tried to unlock an unlocked exc state");
 
         let state = self.state.get();
 
@@ -99,5 +99,5 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {}
+    unsafe fn exc_bump(&self) {}
 }

@@ -14,7 +14,7 @@ pub struct Condvar<L> {
 
 /// # Safety
 ///
-/// `uniq_unlock` cannot call `parking_lot_core::park`, or panic
+/// `exc_unlock` cannot call `parking_lot_core::park`, or panic
 pub unsafe trait Parkable {
     fn mark_parked_if_locked(&self) -> bool;
     fn mark_parked(&self);
@@ -91,17 +91,17 @@ impl<L: RawLockInfo + RawExclusiveLock + Parkable, T: ?Sized> Wait for Exclusive
 
     #[inline]
     fn wait(&mut self, cv: &Condvar<Self::Lock>) {
-        unsafe { cv.raw.uniq_wait(self.raw_mut()) }
+        unsafe { cv.raw.exc_wait(self.raw_mut()) }
     }
 
     #[inline]
     fn wait_until(&mut self, cv: &Condvar<Self::Lock>, timeout: Instant) -> WaitTimeoutResult {
-        unsafe { cv.raw.uniq_wait_until(self.raw_mut(), timeout) }
+        unsafe { cv.raw.exc_wait_until(self.raw_mut(), timeout) }
     }
 
     #[inline]
     fn wait_for(&mut self, cv: &Condvar<Self::Lock>, duration: Duration) -> WaitTimeoutResult {
-        unsafe { cv.raw.uniq_wait_for(self.raw_mut(), duration) }
+        unsafe { cv.raw.exc_wait_for(self.raw_mut(), duration) }
     }
 }
 

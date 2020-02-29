@@ -114,36 +114,36 @@ unsafe impl RawLockInfo for Global {
 
 unsafe impl RawExclusiveLock for Global {
     #[inline]
-    fn uniq_lock(&self) {
-        GLOBAL[self.addr()].uniq_lock()
+    fn exc_lock(&self) {
+        GLOBAL[self.addr()].exc_lock()
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
-        GLOBAL[self.addr()].uniq_try_lock()
+    fn exc_try_lock(&self) -> bool {
+        GLOBAL[self.addr()].exc_try_lock()
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
-        GLOBAL[self.addr()].uniq_unlock()
+    unsafe fn exc_unlock(&self) {
+        GLOBAL[self.addr()].exc_unlock()
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
-        GLOBAL[self.addr()].uniq_bump()
+    unsafe fn exc_bump(&self) {
+        GLOBAL[self.addr()].exc_bump()
     }
 }
 
 #[cfg(feature = "parking_lot_core")]
 unsafe impl RawExclusiveLockFair for Global {
     #[inline]
-    unsafe fn uniq_unlock_fair(&self) {
-        GLOBAL[self.addr()].uniq_unlock_fair()
+    unsafe fn exc_unlock_fair(&self) {
+        GLOBAL[self.addr()].exc_unlock_fair()
     }
 
     #[inline]
-    unsafe fn uniq_bump_fair(&self) {
-        GLOBAL[self.addr()].uniq_bump_fair()
+    unsafe fn exc_bump_fair(&self) {
+        GLOBAL[self.addr()].exc_bump_fair()
     }
 }
 

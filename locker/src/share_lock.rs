@@ -7,8 +7,8 @@ pub use raw::RawShareGuard;
 
 /// # Safety
 ///
-/// * `shr_unlock` must be called `n` times before `uniq_lock`,
-/// `uniq_try_lock` can succeed (provided that `RawExclusiveLock` is implemented),
+/// * `shr_unlock` must be called `n` times before `exc_lock`,
+/// `exc_try_lock` can succeed (provided that `RawExclusiveLock` is implemented),
 /// where `n` is the number of times `shr_lock` and `shr_split` are called combined
 pub unsafe trait RawShareLock {
     /// shr locks the lock

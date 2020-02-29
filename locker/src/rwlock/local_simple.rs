@@ -8,7 +8,7 @@ pub struct RawLock {
 }
 
 impl RawLock {
-    const UNIQ_LOCK: usize = usize::max_value();
+    const EXC_LOCK: usize = usize::max_value();
 
     #[inline]
     pub const fn new() -> Self {
@@ -38,14 +38,14 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        assert!(self.uniq_try_lock(), "Can't lock a locked local lock");
+    fn exc_lock(&self) {
+        assert!(self.exc_try_lock(), "Can't lock a locked local lock");
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         if self.state.get() == 0 {
-            self.state.set(Self::UNIQ_LOCK);
+            self.state.set(Self::EXC_LOCK);
             true
         } else {
             false
@@ -53,12 +53,12 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         self.state.set(0);
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {}
+    unsafe fn exc_bump(&self) {}
 }
 
 unsafe impl crate::share_lock::RawShareLock for RawLock {
@@ -73,7 +73,7 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
     #[inline]
     fn shr_try_lock(&self) -> bool {
         let state = self.state.get();
-        if state != Self::UNIQ_LOCK {
+        if state != Self::EXC_LOCK {
             self.state.set(state + 1);
             true
         } else {

@@ -29,15 +29,15 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
+    fn exc_lock(&self) {
         assert!(
-            self.uniq_try_lock(),
+            self.exc_try_lock(),
             "Can't lock a locked local exclusive lock"
         );
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         if self.lock_count.get() == 0 {
             self.lock_count.set(1);
             true
@@ -47,24 +47,24 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         debug_assert!(
             self.lock_count.get() > 0,
-            "tried to unlock an unlocked uniq lock"
+            "tried to unlock an unlocked exc lock"
         );
 
         self.lock_count.set(self.lock_count.get() - 1);
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {}
+    unsafe fn exc_bump(&self) {}
 }
 
 unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
     #[inline]
-    unsafe fn uniq_split(&self) {
+    unsafe fn exc_split(&self) {
         let (lock_count, overflow) = self.lock_count.get().overflowing_add(1);
-        assert!(!overflow, "tried to split a local uniq lock too many times");
+        assert!(!overflow, "tried to split a local exc lock too many times");
         self.lock_count.set(lock_count);
     }
 }

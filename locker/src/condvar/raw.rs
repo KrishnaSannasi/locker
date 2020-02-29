@@ -216,38 +216,38 @@ impl<L: Parkable> RawCondvar<L> {
 
 impl<L: RawExclusiveLock + RawLockInfo + Parkable> RawCondvar<L> {
     #[inline]
-    fn uniq_wait_until_internal(&self, lock: &L, timeout: Option<Instant>) -> WaitTimeoutResult {
+    fn exc_wait_until_internal(&self, lock: &L, timeout: Option<Instant>) -> WaitTimeoutResult {
         unsafe {
             self.wait_until_internal(
                 lock as *const L as *mut L,
                 timeout,
-                &|| lock.uniq_lock(),
-                &|| lock.uniq_unlock(),
+                &|| lock.exc_lock(),
+                &|| lock.exc_unlock(),
             )
         }
     }
 
     #[inline]
-    pub fn uniq_wait(&self, guard: &mut RawExclusiveGuard<L>) {
-        self.uniq_wait_until_internal(guard.inner(), None);
+    pub fn exc_wait(&self, guard: &mut RawExclusiveGuard<L>) {
+        self.exc_wait_until_internal(guard.inner(), None);
     }
 
     #[inline]
-    pub fn uniq_wait_until(
+    pub fn exc_wait_until(
         &self,
         guard: &mut RawExclusiveGuard<L>,
         instant: Instant,
     ) -> WaitTimeoutResult {
-        self.uniq_wait_until_internal(guard.inner(), Some(instant))
+        self.exc_wait_until_internal(guard.inner(), Some(instant))
     }
 
     #[inline]
-    pub fn uniq_wait_for(
+    pub fn exc_wait_for(
         &self,
         guard: &mut RawExclusiveGuard<L>,
         duration: Duration,
     ) -> WaitTimeoutResult {
-        self.uniq_wait_until_internal(
+        self.exc_wait_until_internal(
             guard.inner(),
             Instant::now().checked_add(duration),
         )

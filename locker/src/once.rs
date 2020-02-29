@@ -8,7 +8,7 @@ use std::mem::MaybeUninit;
 use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "parking_lot_core")]
-pub mod atomic;
+pub mod simple;
 #[cfg(feature = "parking_lot_core")]
 pub mod local;
 
@@ -75,12 +75,12 @@ fn force_call_once_slow(lock: &dyn Finish, use_lock: bool, f: &mut dyn FnMut(&On
 
     impl Drop for LocalGuard<'_> {
         fn drop(&mut self) {
-            unsafe { self.0.uniq_unlock() }
+            unsafe { self.0.exc_unlock() }
         }
     }
 
     let guard = if use_lock {
-        lock.uniq_lock();
+        lock.exc_lock();
         Some(LocalGuard(lock.as_raw_exclusive_lock()))
     } else {
         None

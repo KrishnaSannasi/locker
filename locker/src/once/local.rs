@@ -68,22 +68,22 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        self.inner.uniq_lock()
+    fn exc_lock(&self) {
+        self.inner.exc_lock()
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
-        self.inner.uniq_try_lock()
+    fn exc_try_lock(&self) -> bool {
+        self.inner.exc_try_lock()
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
-        self.inner.uniq_unlock()
+    unsafe fn exc_unlock(&self) {
+        self.inner.exc_unlock()
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
-        self.inner.uniq_bump()
+    unsafe fn exc_bump(&self) {
+        self.inner.exc_bump()
     }
 }

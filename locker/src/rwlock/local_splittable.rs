@@ -9,7 +9,7 @@ pub struct RawLock {
 
 impl RawLock {
     const LOCK_BIT: usize = 0b01;
-    const UNIQ_BIT: usize = 0b10;
+    const EXC_BIT: usize = 0b10;
     const COUNT: usize = !0b11;
     const INC: usize = !Self::COUNT + 1;
 
@@ -41,18 +41,18 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        assert!(self.uniq_try_lock(), "Can't lock a locked local lock");
+    fn exc_lock(&self) {
+        assert!(self.exc_try_lock(), "Can't lock a locked local lock");
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         let state = self.state.get();
 
         if state == 0 {
             // if unlocked
 
-            self.state.set(Self::LOCK_BIT | Self::UNIQ_BIT | Self::INC);
+            self.state.set(Self::LOCK_BIT | Self::EXC_BIT | Self::INC);
 
             true
         } else {
@@ -61,7 +61,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         let state = self.state.get();
 
         if state & Self::COUNT == Self::INC {
@@ -72,11 +72,11 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {}
+    unsafe fn exc_bump(&self) {}
 }
 
 unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
-    unsafe fn uniq_split(&self) {
+    unsafe fn exc_split(&self) {
         let state = self.state.get();
 
         let state = state
@@ -103,7 +103,7 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
         if state == 0 {
             // if unlocked
             self.state.set(Self::LOCK_BIT | Self::INC);
-        } else if state & Self::UNIQ_BIT == 0 {
+        } else if state & Self::EXC_BIT == 0 {
             // if share locked
 
             let state = state

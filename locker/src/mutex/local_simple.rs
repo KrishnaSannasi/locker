@@ -29,25 +29,25 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
+    fn exc_lock(&self) {
         assert!(
-            self.uniq_try_lock(),
+            self.exc_try_lock(),
             "Can't lock a locked local exclusive lock"
         );
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         !self.lock.replace(true)
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
-        debug_assert!(self.lock.get(), "tried to unlock an unlocked uniq lock");
+    unsafe fn exc_unlock(&self) {
+        debug_assert!(self.lock.get(), "tried to unlock an unlocked exc lock");
 
         self.lock.set(false);
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {}
+    unsafe fn exc_bump(&self) {}
 }

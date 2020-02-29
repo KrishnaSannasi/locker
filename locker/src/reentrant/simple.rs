@@ -95,14 +95,14 @@ unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for RawReentrantLoc
     #[inline]
     fn shr_lock(&self) {
         self.lock_internal(|| {
-            self.inner.uniq_lock();
+            self.inner.exc_lock();
             true
         });
     }
 
     #[inline]
     fn shr_try_lock(&self) -> bool {
-        self.lock_internal(|| self.inner.uniq_try_lock())
+        self.lock_internal(|| self.inner.exc_try_lock())
     }
 
     #[inline]
@@ -127,14 +127,14 @@ unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for RawReentrantLoc
     unsafe fn shr_unlock(&self) {
         self.unlock_internal(
             #[cold]
-            || self.inner.uniq_unlock(),
+            || self.inner.exc_unlock(),
         )
     }
 
     #[inline]
     unsafe fn shr_bump(&self) {
         if self.count.get() == 0 {
-            self.inner.uniq_bump();
+            self.inner.exc_bump();
         }
     }
 }
@@ -144,14 +144,14 @@ unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for RawReen
     unsafe fn shr_unlock_fair(&self) {
         self.unlock_internal(
             #[cold]
-            || self.inner.uniq_unlock_fair(),
+            || self.inner.exc_unlock_fair(),
         )
     }
 
     #[inline]
     unsafe fn shr_bump_fair(&self) {
         if self.count.get() == 0 {
-            self.inner.uniq_bump_fair();
+            self.inner.exc_bump_fair();
         }
     }
 }

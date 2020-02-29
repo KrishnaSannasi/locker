@@ -163,7 +163,7 @@ impl RawLock {
     #[cold]
     fn bump_slow(&self, force_fair: bool) {
         self.unlock_slow(force_fair);
-        self.uniq_lock();
+        self.exc_lock();
     }
 }
 
@@ -176,14 +176,14 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        if !self.uniq_try_lock() {
+    fn exc_lock(&self) {
+        if !self.exc_try_lock() {
             self.lock_slow(None);
         }
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         let state = self.state.load(Ordering::Acquire);
 
         (state & Self::LOCK_BITS) == 0
@@ -199,10 +199,10 @@ unsafe impl RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         let state = self.state.load(Ordering::Relaxed) & Self::LOCK_BITS;
 
-        debug_assert_ne!(state, 0, "uniq_unlock was called with an unlocked mutex");
+        debug_assert_ne!(state, 0, "exc_unlock was called with an unlocked mutex");
 
         if self
             .state
@@ -219,7 +219,7 @@ unsafe impl RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
+    unsafe fn exc_bump(&self) {
         if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
             self.bump_slow(false)
         }
@@ -228,10 +228,10 @@ unsafe impl RawExclusiveLock for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
     #[inline]
-    unsafe fn uniq_unlock_fair(&self) {
+    unsafe fn exc_unlock_fair(&self) {
         let state = self.state.load(Ordering::Relaxed) & Self::LOCK_BITS;
 
-        debug_assert_ne!(state, 0, "uniq_unlock was called with an unlocked mutex");
+        debug_assert_ne!(state, 0, "exc_unlock was called with an unlocked mutex");
 
         if self
             .state
@@ -248,7 +248,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_bump_fair(&self) {
+    unsafe fn exc_bump_fair(&self) {
         if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
             self.bump_slow(true)
         }
@@ -256,7 +256,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
 }
 
 unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
-    unsafe fn uniq_split(&self) {
+    unsafe fn exc_split(&self) {
         self.state.fetch_and(Self::LOCK_INC, Ordering::Relaxed);
     }
 }

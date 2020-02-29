@@ -28,7 +28,7 @@ pub struct RawLock {
 impl RawLock {
     const PARK_BIT: usize = 1;
     const INC: usize = 2;
-    const UNIQ_LOCK: usize = usize::max_value() & !Self::PARK_BIT;
+    const EXC_LOCK: usize = usize::max_value() & !Self::PARK_BIT;
     const LOCK_MASK: usize = usize::max_value() & !Self::PARK_BIT;
 
     #[inline]
@@ -59,54 +59,54 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        if !self.uniq_try_lock() {
-            self.uniq_lock_slow(None);
+    fn exc_lock(&self) {
+        if !self.exc_try_lock() {
+            self.exc_lock_slow(None);
         }
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         self.state
-            .compare_exchange(0, Self::UNIQ_LOCK, Ordering::Acquire, Ordering::Relaxed)
+            .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
             .is_ok()
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         if self
             .state
-            .compare_exchange(Self::UNIQ_LOCK, 0, Ordering::Release, Ordering::Relaxed)
+            .compare_exchange(Self::EXC_LOCK, 0, Ordering::Release, Ordering::Relaxed)
             .is_err()
         {
-            self.uniq_unlock_slow(false);
+            self.exc_unlock_slow(false);
         }
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
+    unsafe fn exc_bump(&self) {
         if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
-            self.uniq_bump_slow(false);
+            self.exc_bump_slow(false);
         }
     }
 }
 
 unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
     #[inline]
-    unsafe fn uniq_unlock_fair(&self) {
+    unsafe fn exc_unlock_fair(&self) {
         if self
             .state
-            .compare_exchange(Self::UNIQ_LOCK, 0, Ordering::Release, Ordering::Relaxed)
+            .compare_exchange(Self::EXC_LOCK, 0, Ordering::Release, Ordering::Relaxed)
             .is_err()
         {
-            self.uniq_unlock_slow(true);
+            self.exc_unlock_slow(true);
         }
     }
 
     #[inline]
-    unsafe fn uniq_bump_fair(&self) {
+    unsafe fn exc_bump_fair(&self) {
         if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
-            self.uniq_bump_slow(true);
+            self.exc_bump_slow(true);
         }
     }
 }
@@ -202,7 +202,7 @@ impl RawLock {
 
     #[cold]
     #[inline(never)]
-    fn uniq_lock_slow(&self, timeout: Option<Instant>) -> bool {
+    fn exc_lock_slow(&self, timeout: Option<Instant>) -> bool {
         let mut spinwait = SpinWait::new();
         let mut state = self.state.load(Ordering::Relaxed);
         loop {
@@ -210,7 +210,7 @@ impl RawLock {
             if state & Self::LOCK_MASK == 0 {
                 match self.state.compare_exchange_weak(
                     state,
-                    state | Self::UNIQ_LOCK,
+                    state | Self::EXC_LOCK,
                     Ordering::Acquire,
                     Ordering::Relaxed,
                 ) {
@@ -404,7 +404,7 @@ impl RawLock {
 
     #[cold]
     #[inline(never)]
-    fn uniq_unlock_slow(&self, force_fair: bool) {
+    fn exc_unlock_slow(&self, force_fair: bool) {
         // Unpark one thread and leave the parked bit set if there might
         // still be parked threads on this address.
         let addr = self as *const _ as usize;
@@ -491,9 +491,9 @@ impl RawLock {
     }
 
     #[cold]
-    fn uniq_bump_slow(&self, force_fair: bool) {
-        self.uniq_unlock_slow(force_fair);
-        self.uniq_lock();
+    fn exc_bump_slow(&self, force_fair: bool) {
+        self.exc_unlock_slow(force_fair);
+        self.exc_lock();
     }
 
     #[cold]

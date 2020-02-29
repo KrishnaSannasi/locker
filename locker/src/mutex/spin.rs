@@ -29,7 +29,7 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
+    fn exc_lock(&self) {
         let mut spin = SpinWait::new();
 
         while self
@@ -42,19 +42,19 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         self.lock
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_ok()
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         self.lock.store(false, Ordering::Release);
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
+    unsafe fn exc_bump(&self) {
         // there are never any parked threads in a spin lock
     }
 }

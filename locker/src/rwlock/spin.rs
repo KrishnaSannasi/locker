@@ -9,7 +9,7 @@ pub struct RawLock {
 }
 
 impl RawLock {
-    const UNIQ_LOCK: usize = usize::max_value();
+    const EXC_LOCK: usize = usize::max_value();
 
     #[inline]
     pub const fn new() -> Self {
@@ -27,13 +27,13 @@ impl RawLock {
     }
 
     #[cold]
-    fn uniq_lock_slow(&self) {
+    fn exc_lock_slow(&self) {
         let mut spin = SpinWait::new();
 
         loop {
             if self
                 .state
-                .compare_exchange(0, Self::UNIQ_LOCK, Ordering::Acquire, Ordering::Relaxed)
+                .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
             {
                 break;
@@ -50,7 +50,7 @@ impl RawLock {
         loop {
             if self
                 .state
-                .compare_exchange(0, Self::UNIQ_LOCK, Ordering::Acquire, Ordering::Relaxed)
+                .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
             {
                 break;
@@ -73,26 +73,26 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        if !self.uniq_try_lock() {
-            self.uniq_lock_slow()
+    fn exc_lock(&self) {
+        if !self.exc_try_lock() {
+            self.exc_lock_slow()
         }
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         self.state
-            .compare_exchange(0, Self::UNIQ_LOCK, Ordering::Acquire, Ordering::Relaxed)
+            .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
             .is_ok()
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
+    unsafe fn exc_unlock(&self) {
         self.state.store(0, Ordering::Release);
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
+    unsafe fn exc_bump(&self) {
         // there are never any parked threads in a spin lock
     }
 }

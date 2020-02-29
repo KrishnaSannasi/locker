@@ -22,7 +22,7 @@ pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
 
 const PARK_BIT: usize = 0b001;
 const LOCK_BIT: usize = 0b010;
-const UNIQ_BIT: usize = 0b100;
+const EXC_BIT: usize = 0b100;
 
 const MASK: usize = INC - 1;
 const INC: usize = 0b1000;
@@ -49,7 +49,7 @@ impl RawLock {
 
     #[cold]
     #[inline(never)]
-    fn uniq_lock_slow(&self, timeout: Option<Instant>) -> bool {
+    fn exc_lock_slow(&self, timeout: Option<Instant>) -> bool {
         let mut spinwait = SpinWait::new();
         let key = self as *const _ as usize;
 
@@ -60,7 +60,7 @@ impl RawLock {
             if state == 0 {
                 if let Err(x) = self.state.compare_exchange_weak(
                     0,
-                    LOCK_BIT | UNIQ_BIT | INC,
+                    LOCK_BIT | EXC_BIT | INC,
                     Ordering::Acquire,
                     Ordering::Relaxed,
                 ) {
@@ -128,9 +128,9 @@ impl RawLock {
                 // The thread that unparked us passed the lock on to us
                 // directly without unlocking it.
                 ParkResult::Unparked(self::TOKEN_HANDOFF_SHARED) => {
-                    // this while loop is necessary because while the `UNIQ_BIT` is not set
+                    // this while loop is necessary because while the `EXC_BIT` is not set
                     // a shr lock could be acquired, this includes the time between sending the
-                    // `TOKEN_HANDOFF_SHARED` and setting the `UNIQ_BIT`.
+                    // `TOKEN_HANDOFF_SHARED` and setting the `EXC_BIT`.
                     //
                     // i.e. there is a race condition that must be taken care of
 
@@ -143,13 +143,13 @@ impl RawLock {
 
                         if let Err(x) = self.state.compare_exchange_weak(
                             state,
-                            state | UNIQ_BIT,
+                            state | EXC_BIT,
                             Ordering::Relaxed,
                             Ordering::Relaxed,
                         ) {
                             state = x;
                         } else {
-                            // if we successfully set the `UNIQ_BIT`
+                            // if we successfully set the `EXC_BIT`
                             return true;
                         }
                     }
@@ -178,7 +178,7 @@ impl RawLock {
 
     #[cold]
     #[inline(never)]
-    fn uniq_unlock_slow(&self, force_fair: bool) {
+    fn exc_unlock_slow(&self, force_fair: bool) {
         // Unpark one thread and leave the parked bit set if there might
         // still be parked threads on this address.
         let addr = self as *const _ as usize;
@@ -200,7 +200,7 @@ impl RawLock {
             // Also clear the counter becase this is the last lock
             if result.have_more_threads {
                 self.state
-                    .fetch_and(!(LOCK_BIT | UNIQ_BIT) & MASK, Ordering::Release);
+                    .fetch_and(!(LOCK_BIT | EXC_BIT) & MASK, Ordering::Release);
             } else {
                 self.state.store(0, Ordering::Release);
             }
@@ -226,7 +226,7 @@ impl RawLock {
 
         loop {
             // Grab the lock if it isn't locked, even if there is a queue on it
-            if state & UNIQ_BIT == 0 {
+            if state & EXC_BIT == 0 {
                 if let Some(next_state) = state.checked_add(INC) {
                     if let Err(x) = self.state.compare_exchange_weak(
                         state,
@@ -266,8 +266,8 @@ impl RawLock {
             let validate = || {
                 let state = self.state.load(Ordering::Relaxed);
 
-                // if there is a unique lock
-                if state & (UNIQ_BIT | PARK_BIT) == UNIQ_BIT | PARK_BIT {
+                // if there is a excue lock
+                if state & (EXC_BIT | PARK_BIT) == EXC_BIT | PARK_BIT {
                     return true
                 }
 
@@ -303,8 +303,8 @@ impl RawLock {
                 // The thread that unparked us passed the lock on to us
                 // directly without unlocking it.
                 ParkResult::Unparked(self::TOKEN_HANDOFF_EXCLUSIVE) => {
-                    // remove the uniq bit, because we are now a shared lock
-                    self.state.fetch_and(!UNIQ_BIT, Ordering::Relaxed);
+                    // remove the exc bit, because we are now a shared lock
+                    self.state.fetch_and(!EXC_BIT, Ordering::Relaxed);
                     return true;
                 }
 
@@ -389,12 +389,12 @@ impl RawLock {
     }
 
     #[inline]
-    fn try_unlock_fast(&self, uniq_bit: usize) -> bool {
+    fn try_unlock_fast(&self, exc_bit: usize) -> bool {
         // if this is the final lock, and there are no parked threads
         if self
             .state
             .compare_exchange(
-                LOCK_BIT | uniq_bit | INC,
+                LOCK_BIT | exc_bit | INC,
                 0,
                 Ordering::Release,
                 Ordering::Relaxed,
@@ -425,9 +425,9 @@ impl RawLock {
     }
 
     #[cold]
-    fn uniq_bump_slow(&self, force_fair: bool) {
-        self.uniq_unlock_slow(force_fair);
-        self.uniq_lock();
+    fn exc_bump_slow(&self, force_fair: bool) {
+        self.exc_unlock_slow(force_fair);
+        self.exc_lock();
     }
 
     #[cold]
@@ -449,18 +449,18 @@ unsafe impl crate::RawLockInfo for RawLock {
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
-    fn uniq_lock(&self) {
-        if !self.uniq_try_lock() {
-            self.uniq_lock_slow(None);
+    fn exc_lock(&self) {
+        if !self.exc_try_lock() {
+            self.exc_lock_slow(None);
         }
     }
 
     #[inline]
-    fn uniq_try_lock(&self) -> bool {
+    fn exc_try_lock(&self) -> bool {
         self.state
             .compare_exchange(
                 0,
-                LOCK_BIT | UNIQ_BIT | INC,
+                LOCK_BIT | EXC_BIT | INC,
                 Ordering::Acquire,
                 Ordering::Relaxed,
             )
@@ -468,40 +468,40 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 
     #[inline]
-    unsafe fn uniq_unlock(&self) {
-        if !self.try_unlock_fast(UNIQ_BIT) {
+    unsafe fn exc_unlock(&self) {
+        if !self.try_unlock_fast(EXC_BIT) {
             // if there are parked threads
-            self.uniq_unlock_slow(false);
+            self.exc_unlock_slow(false);
         }
     }
 
     #[inline]
-    unsafe fn uniq_bump(&self) {
+    unsafe fn exc_bump(&self) {
         if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
-            self.uniq_bump_slow(false)
+            self.exc_bump_slow(false)
         }
     }
 }
 
 unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
     #[inline]
-    unsafe fn uniq_unlock_fair(&self) {
-        if !self.try_unlock_fast(UNIQ_BIT) {
+    unsafe fn exc_unlock_fair(&self) {
+        if !self.try_unlock_fast(EXC_BIT) {
             // if there are parked threads
-            self.uniq_unlock_slow(true);
+            self.exc_unlock_slow(true);
         }
     }
 
     #[inline]
-    unsafe fn uniq_bump_fair(&self) {
+    unsafe fn exc_bump_fair(&self) {
         if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
-            self.uniq_bump_slow(true)
+            self.exc_bump_slow(true)
         }
     }
 }
 
 unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
-    unsafe fn uniq_split(&self) {
+    unsafe fn exc_split(&self) {
         self.split()
     }
 }
@@ -518,8 +518,8 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
     fn shr_try_lock(&self) -> bool {
         let state = self.state.load(Ordering::Acquire);
 
-        if state & UNIQ_BIT != 0 {
-            // if there is a uniq lock, we can't acquire a lock
+        if state & EXC_BIT != 0 {
+            // if there is a exc lock, we can't acquire a lock
             false
         } else if let Some(new_state) = state.checked_add(INC) {
             self.state

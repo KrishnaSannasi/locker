@@ -21,30 +21,30 @@ unsafe impl<L: RawLockInfo> RawLockInfo for Fair<L> {
 }
 
 unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLock for Fair<L> {
-    fn uniq_lock(&self) {
-        self.0.uniq_lock()
+    fn exc_lock(&self) {
+        self.0.exc_lock()
     }
 
-    fn uniq_try_lock(&self) -> bool {
-        self.0.uniq_try_lock()
+    fn exc_try_lock(&self) -> bool {
+        self.0.exc_try_lock()
     }
 
-    unsafe fn uniq_unlock(&self) {
-        self.0.uniq_unlock_fair()
+    unsafe fn exc_unlock(&self) {
+        self.0.exc_unlock_fair()
     }
 
-    unsafe fn uniq_bump(&self) {
-        self.0.uniq_bump_fair()
+    unsafe fn exc_bump(&self) {
+        self.0.exc_bump_fair()
     }
 }
 
 unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for Fair<L> {
-    unsafe fn uniq_unlock_fair(&self) {
-        self.0.uniq_unlock_fair()
+    unsafe fn exc_unlock_fair(&self) {
+        self.0.exc_unlock_fair()
     }
 
-    unsafe fn uniq_bump_fair(&self) {
-        self.0.uniq_bump_fair()
+    unsafe fn exc_bump_fair(&self) {
+        self.0.exc_bump_fair()
     }
 }
 
@@ -58,8 +58,8 @@ where
 }
 
 unsafe impl<L: ?Sized + SplittableExclusiveLock + RawExclusiveLockFair> SplittableExclusiveLock for Fair<L> {
-    unsafe fn uniq_split(&self) {
-        self.0.uniq_split()
+    unsafe fn exc_split(&self) {
+        self.0.exc_split()
     }
 }
 
