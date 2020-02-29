@@ -46,10 +46,6 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
             pub const unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
                 &mut self.raw
             }
-
-            pub const fn into_raw_parts(self) -> (RawShareGuard<'a, L>, *const T) {
-                (self.raw, self.value)
-            }
         } else {
             pub unsafe fn from_raw_parts(raw: RawShareGuard<'a, L>, value: *const T) -> Self {
                 Self {
@@ -66,11 +62,11 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
             pub unsafe fn raw_mut(&mut self) -> &mut RawShareGuard<'a, L> {
                 &mut self.raw
             }
-
-            pub fn into_raw_parts(self) -> (RawShareGuard<'a, L>, *const T) {
-                (self.raw, self.value)
-            }
         }
+    }
+
+    pub fn into_raw_parts(self) -> (RawShareGuard<'a, L>, *const T) {
+        (self.raw, self.value)
     }
 
     pub fn map<F: FnOnce(&T) -> &U, U: ?Sized>(self, f: F) -> ShareGuard<'a, L, U, Mapped> {

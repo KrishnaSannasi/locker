@@ -46,10 +46,6 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
             pub const unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
                 &mut self.raw
             }
-
-            pub const fn into_raw_parts(self) -> (RawExclusiveGuard<'a, L>, *mut T) {
-                (self.raw, self.value)
-            }
         } else {
             pub unsafe fn from_raw_parts(raw: RawExclusiveGuard<'a, L>, value: *mut T) -> Self {
                 Self {
@@ -66,11 +62,11 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
             pub unsafe fn raw_mut(&mut self) -> &mut RawExclusiveGuard<'a, L> {
                 &mut self.raw
             }
-
-            pub fn into_raw_parts(self) -> (RawExclusiveGuard<'a, L>, *mut T) {
-                (self.raw, self.value)
-            }
         }
+    }
+
+    pub fn into_raw_parts(self) -> (RawExclusiveGuard<'a, L>, *mut T) {
+        (self.raw, self.value)
     }
 
     pub fn map<F: FnOnce(&mut T) -> &mut U, U: ?Sized>(

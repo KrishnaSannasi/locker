@@ -103,34 +103,34 @@ impl<L: Finish> Once<L> {
     #[inline]
     pub fn call_once(&self, f: impl FnOnce()) {
         if !self.lock.is_done() {
-            self.call_once_inner(true, f);
+            self.call_once_slow(true, f);
         }
     }
 
     #[inline]
     pub fn call_once_mut(&mut self, f: impl FnOnce()) {
         if !self.lock.is_done() {
-            self.call_once_inner(false, f);
+            self.call_once_slow(false, f);
         }
     }
 
     #[inline]
     pub fn force_call_once(&self, f: impl FnOnce(&OnceState)) {
         if !self.lock.is_done() {
-            self.force_call_once_inner(true, f);
+            self.force_call_once_slow(true, f);
         }
     }
 
     #[inline]
     pub fn force_call_once_mut(&mut self, f: impl FnOnce(&OnceState)) {
         if !self.lock.is_done() {
-            self.force_call_once_inner(false, f);
+            self.force_call_once_slow(false, f);
         }
     }
 
     #[inline]
-    fn call_once_inner(&self, use_lock: bool, f: impl FnOnce()) {
-        self.force_call_once_inner(use_lock, move |once_state: &OnceState| {
+    fn call_once_slow(&self, use_lock: bool, f: impl FnOnce()) {
+        self.force_call_once_slow(use_lock, move |once_state: &OnceState| {
             assert!(
                 !once_state.is_poisoned(),
                 "tried to call `call_once*` on a poisoned `Once`"
@@ -141,7 +141,7 @@ impl<L: Finish> Once<L> {
     }
 
     #[inline]
-    fn force_call_once_inner(&self, use_lock: bool, f: impl FnOnce(&OnceState)) {
+    fn force_call_once_slow(&self, use_lock: bool, f: impl FnOnce(&OnceState)) {
         let mut f = Some(f);
 
         let mut f = move |once_state: &OnceState| f.take().unwrap()(once_state);
@@ -150,28 +150,28 @@ impl<L: Finish> Once<L> {
     }
 }
 
-pub struct OnceCell<L, T> {
+pub struct OnceCell<L: Finish, T> {
     once: Once<L>,
     value: UnsafeCell<MaybeUninit<T>>,
 }
 
-unsafe impl<L, T: Send + Sync> Sync for OnceCell<L, T> where Once<L>: Sync {}
+unsafe impl<L: Finish, T: Send + Sync> Sync for OnceCell<L, T> where Once<L>: Sync {}
 
-impl<L: RawLockInfo, T> Default for OnceCell<L, T> {
-    #[inline]
-    fn default() -> Self {
-        unsafe { Self::from_once(Once::default()) }
+impl<L: Finish, T> Drop for OnceCell<L, T> {
+    fn drop(&mut self) {
+        if std::mem::needs_drop::<T>() && self.once.lock.is_done() {
+            unsafe {
+                self.value.get().cast::<T>().drop_in_place()
+            }
+        }
     }
 }
 
-impl<L, T> OnceCell<L, T> {
-    /// # Safety
-    ///
-    /// * `once` must be a freshly created `Once`
+impl<L: Finish + RawLockInfo, T> Default for OnceCell<L, T> {
     #[inline]
-    pub const unsafe fn from_once(once: Once<L>) -> Self {
+    fn default() -> Self {
         Self {
-            once,
+            once: Once::default(),
             value: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
@@ -181,7 +181,12 @@ impl<L, T> OnceCell<L, T> {
 impl<L: Finish + RawLockInfo, T> OnceCell<L, T> {
     #[inline]
     pub const fn new() -> Self {
-        unsafe { Self::from_once(Once::new()) }
+        unsafe {
+            Self {
+                once: Once::from_raw(L::INIT),
+                value: UnsafeCell::new(MaybeUninit::uninit()),
+            }
+        }
     }
 }
 
@@ -189,30 +194,57 @@ impl<L: Finish, T> OnceCell<L, T> {
     #[inline]
     pub fn get(&self) -> Option<&T> {
         if self.once.lock.is_done() {
-            unsafe { Some(&*self.value.get().cast::<T>()) }
+            unsafe { Some(self.get_unchecked()) }
         } else {
             None
         }
     }
 
     #[inline]
-    pub fn get_or_init(&self, f: impl FnOnce() -> T) -> &T {
-        let value = self.value.get().cast::<T>();
-
-        self.once
-            .force_call_once(|_once_state| unsafe { value.write(f()) });
-
-        unsafe { &*value }
+    pub fn get_mut(&mut self) -> Option<&mut T> {
+        if self.once.lock.is_done() {
+            unsafe { Some(self.get_unchecked_mut()) }
+        } else {
+            None
+        }
     }
 
     #[inline]
-    pub fn get_or_init_mut(&mut self, f: impl FnOnce() -> T) -> &T {
-        let value = self.value.get().cast::<T>();
+    pub unsafe fn get_unchecked(&self) -> &T {
+        &*self.value.get().cast::<T>()
+    }
 
-        self.once
-            .force_call_once_mut(|_once_state| unsafe { value.write(f()) });
+    #[inline]
+    pub unsafe fn get_unchecked_mut(&mut self) -> &mut T {
+        &mut *self.value.get().cast::<T>()
+    }
 
-        unsafe { &*value }
+    #[inline]
+    pub fn get_or_init(&self, f: impl FnOnce() -> T) -> &T {
+        let ptr = self.value.get().cast::<T>();
+
+        if !self.once.lock.is_done() {
+            let value = f();
+
+            self.once
+                .force_call_once(move |_once_state| unsafe { ptr.write(value) });
+        }
+
+        unsafe { &*ptr }
+    }
+
+    #[inline]
+    pub fn get_or_init_mut(&mut self, f: impl FnOnce() -> T) -> &mut T {
+        let ptr = self.value.get().cast::<T>();
+
+        if !self.once.lock.is_done() {
+            let value = f();
+
+            self.once
+                .force_call_once_mut(move |_once_state| unsafe { ptr.write(value) });
+        }
+
+        unsafe { &mut *ptr }
     }
 }
 
@@ -401,6 +433,77 @@ impl<L: Finish, F: FnMut(&OnceState) -> T, T> Deref for Lazy<L, T, F, Retry> {
 }
 
 impl<L: Finish, F: FnMut(&OnceState) -> T, T> DerefMut for Lazy<L, T, F, Retry> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        Self::force_mut(self)
+    }
+}
+
+pub struct RacyLazy<L: Finish, T, F = fn() -> T> {
+    once: OnceCell<L, T>,
+    func: F,
+}
+
+unsafe impl<L: Finish, F: Send + Sync, T: Send + Sync> Sync for RacyLazy<L, T, F> where Once<L>: Sync {}
+
+impl<L: Finish + RawLockInfo, T, F: Fn() -> T> RacyLazy<L, T, F> {
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "nightly")] {
+            #[inline]
+            pub const fn new(func: F) -> Self {
+                Self { once: OnceCell::new(), func }
+            }
+        } else {
+            #[inline]
+            pub fn new(func: F) -> Self {
+                Self { once: OnceCell::default(), func }
+            }
+        }
+    }
+}
+
+impl<L: Finish, F, T> RacyLazy<L, T, F> {
+    /// # Safety
+    ///
+    /// `Lazy::force` or `Lazy::force_mut` mut have been called before this
+    #[inline]
+    #[allow(unreachable_code)]
+    pub unsafe fn get_unchecked(this: &Self) -> &T {
+        this.once.get_unchecked()
+    }
+
+    /// # Safety
+    ///
+    /// `Lazy::force` or `Lazy::force_mut` mut have been called before this
+    #[inline]
+    #[allow(unreachable_code)]
+    pub unsafe fn get_unchecked_mut(this: &mut Self) -> &mut T {
+        this.once.get_unchecked_mut()
+    }
+}
+
+impl<L: Finish, F: Fn() -> T, T> RacyLazy<L, T, F> {
+    #[inline]
+    pub fn force(this: &Self) -> &T {
+        this.once.get_or_init(&this.func)
+    }
+
+    #[inline]
+    pub fn force_mut(this: &mut Self) -> &mut T {
+        this.once.get_or_init_mut(&this.func)
+    }
+}
+
+impl<L: Finish, F: Fn() -> T, T> Deref for RacyLazy<L, T, F> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &T {
+        Self::force(self)
+    }
+}
+
+impl<L: Finish, F: Fn() -> T, T> DerefMut for RacyLazy<L, T, F> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
         Self::force_mut(self)

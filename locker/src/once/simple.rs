@@ -5,8 +5,9 @@ use std::sync::atomic::Ordering;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 pub type Once = crate::once::Once<RawLock>;
 pub type OnceCell<T> = crate::once::OnceCell<RawLock, T>;
-pub type Lazy<T, F> = crate::once::Lazy<RawLock, T, F, crate::once::Panic>;
-pub type RertyLazy<T, F> = crate::once::Lazy<RawLock, T, F, crate::once::Retry>;
+pub type Lazy<T, F = fn() -> T> = crate::once::Lazy<RawLock, T, F, crate::once::Panic>;
+pub type RertyLazy<T, F = fn() -> T> = crate::once::Lazy<RawLock, T, F, crate::once::Retry>;
+pub type RacyLazy<T, F = fn() -> T> = crate::once::RacyLazy<RawLock, T, F>;
 
 pub struct RawLock {
     inner: Tagged,
@@ -50,7 +51,12 @@ impl RawLock {
     }
 
     pub const fn once_cell<T>() -> OnceCell<T> {
-        unsafe { OnceCell::from_once(Self::once()) }
+        unsafe {
+            OnceCell {
+                once: Once::from_raw(Self::new()),
+                value: super::UnsafeCell::new(super::MaybeUninit::uninit())
+            }
+        }
     }
 
     pub const fn lazy<T, F>(func: F) -> Lazy<T, F> {
@@ -59,6 +65,13 @@ impl RawLock {
 
     pub const fn retry_lazy<T, F>(func: F) -> Lazy<T, F> {
         unsafe { Lazy::from_raw_parts(Self::once(), func) }
+    }
+
+    pub const fn racy_lazy<T, F>(func: F) -> RacyLazy<T, F> {
+        RacyLazy {
+            once: Self::once_cell(),
+            func,
+        }
     }
 }
 
