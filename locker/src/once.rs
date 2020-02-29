@@ -70,9 +70,30 @@ impl OnceState {
     }
 }
 
+#[inline(always)]
+fn panic_on_poison(f: impl FnOnce()) -> impl FnOnce(&OnceState) {
+    move |once_state| {
+        assert!(
+            !once_state.is_poisoned(),
+            "tried to call `call_once*` on a poisoned `Once`"
+        );
+
+        f()
+    } 
+}
+
+#[cold]
+fn run_once_unchecked(lock: &dyn Finish, f: impl FnOnce(&OnceState)) {
+    let is_poisoned = lock.get_and_mark_poisoned();
+    
+    f(&OnceState(is_poisoned));
+
+    lock.mark_done();
+}
+
 #[cold]
 #[inline(never)]
-fn force_call_once_slow(lock: &dyn Finish, use_lock: bool, f: &mut dyn FnMut(&OnceState)) {
+fn force_call_once_slow(lock: &dyn Finish, f: &mut dyn FnMut(&OnceState)) {
     struct LocalGuard<'a>(&'a dyn RawExclusiveLock);
 
     impl Drop for LocalGuard<'_> {
@@ -81,72 +102,41 @@ fn force_call_once_slow(lock: &dyn Finish, use_lock: bool, f: &mut dyn FnMut(&On
         }
     }
 
-    let guard = if use_lock {
-        lock.exc_lock();
-        Some(LocalGuard(lock.as_raw_exclusive_lock()))
-    } else {
-        None
-    };
+    lock.exc_lock();
+    let _guard = LocalGuard(lock.as_raw_exclusive_lock());
 
-    if !use_lock || !lock.is_done() {
-        let is_poisoned = lock.get_and_mark_poisoned();
-        
-        f(&OnceState(is_poisoned));
-
-        lock.mark_done();
+    if !lock.is_done() {
+        run_once_unchecked(lock, f)
     }
-
-    drop(guard);
 }
 
 impl<L: Finish> Once<L> {
     #[inline]
     pub fn call_once(&self, f: impl FnOnce()) {
-        if !self.lock.is_done() {
-            self.call_once_slow(true, f);
-        }
+        self.force_call_once(panic_on_poison(f))
     }
 
     #[inline]
     pub fn call_once_mut(&mut self, f: impl FnOnce()) {
-        if !self.lock.is_done() {
-            self.call_once_slow(false, f);
-        }
+        self.force_call_once_mut(panic_on_poison(f))
     }
 
     #[inline]
     pub fn force_call_once(&self, f: impl FnOnce(&OnceState)) {
         if !self.lock.is_done() {
-            self.force_call_once_slow(true, f);
+            let mut f = Some(f);
+
+            let mut f = move |once_state: &OnceState| f.take().unwrap()(once_state);
+
+            force_call_once_slow(&self.lock, &mut f);
         }
     }
 
     #[inline]
     pub fn force_call_once_mut(&mut self, f: impl FnOnce(&OnceState)) {
         if !self.lock.is_done() {
-            self.force_call_once_slow(false, f);
+            run_once_unchecked(&self.lock, f);
         }
-    }
-
-    #[inline]
-    fn call_once_slow(&self, use_lock: bool, f: impl FnOnce()) {
-        self.force_call_once_slow(use_lock, move |once_state: &OnceState| {
-            assert!(
-                !once_state.is_poisoned(),
-                "tried to call `call_once*` on a poisoned `Once`"
-            );
-
-            f()
-        });
-    }
-
-    #[inline]
-    fn force_call_once_slow(&self, use_lock: bool, f: impl FnOnce(&OnceState)) {
-        let mut f = Some(f);
-
-        let mut f = move |once_state: &OnceState| f.take().unwrap()(once_state);
-
-        force_call_once_slow(&self.lock, use_lock, &mut f);
     }
 }
 
@@ -223,12 +213,8 @@ impl<L: Finish, T> OnceCell<L, T> {
     pub fn get_or_init(&self, f: impl FnOnce() -> T) -> &T {
         let ptr = self.value.get().cast::<T>();
 
-        if !self.once.lock.is_done() {
-            let value = f();
-
-            self.once
-                .force_call_once(move |_once_state| unsafe { ptr.write(value) });
-        }
+        self.once
+            .force_call_once(move |_once_state| unsafe { ptr.write(f()) });
 
         unsafe { &*ptr }
     }
@@ -237,14 +223,24 @@ impl<L: Finish, T> OnceCell<L, T> {
     pub fn get_or_init_mut(&mut self, f: impl FnOnce() -> T) -> &mut T {
         let ptr = self.value.get().cast::<T>();
 
+        self.once
+            .force_call_once_mut(move |_once_state| unsafe { ptr.write(f()) });
+
+        unsafe { &mut *ptr }
+    }
+
+    #[inline]
+    pub fn get_or_init_racy(&self, f: impl FnOnce() -> T) -> &T {
+        let ptr = self.value.get().cast::<T>();
+
         if !self.once.lock.is_done() {
             let value = f();
 
             self.once
-                .force_call_once_mut(move |_once_state| unsafe { ptr.write(value) });
+                .force_call_once(move |_once_state| unsafe { ptr.write(value) });
         }
 
-        unsafe { &mut *ptr }
+        unsafe { &*ptr }
     }
 }
 
@@ -485,7 +481,7 @@ impl<L: Finish, F, T> RacyLazy<L, T, F> {
 impl<L: Finish, F: Fn() -> T, T> RacyLazy<L, T, F> {
     #[inline]
     pub fn force(this: &Self) -> &T {
-        this.once.get_or_init(&this.func)
+        this.once.get_or_init_racy(&this.func)
     }
 
     #[inline]
