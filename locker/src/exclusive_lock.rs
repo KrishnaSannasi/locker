@@ -11,22 +11,36 @@ pub use raw::RawExclusiveGuard;
 /// `exc_try_lock`, `shr_lock`, or `try_shr_lock` can succeed (for the last two,
 /// provided that `RawShareLock` is implemented)
 pub unsafe trait RawExclusiveLock {
-    /// exc locks the lock
+    /// acquire an *exc lock*
     ///
     /// blocks until lock is acquired
+    ///
+    /// # Panic
+    ///
+    /// This function may panic if the lock is cannot be acquired
     fn exc_lock(&self);
 
-    /// attempts to exc lock the lock
+    /// attempts to acquire a *exc lock*
+    ///
+    /// This function is non-blocking and may not panic
     ///
     /// returns true on success
     fn exc_try_lock(&self) -> bool;
 
+    /// Unlock a single exclusive lock
+    ///
+    /// This releases a *exc lock*
+    ///
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_unlock(&self);
 
+    /// Temporarily yields the lock to a waiting thread if there is one.
+    /// This method is functionally equivalent to calling `exc_unlock` followed by `exc_lock`,
+    /// however it can be much more efficient in the case where there are no waiting threads.
+    ///
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
@@ -44,6 +58,14 @@ pub unsafe trait RawExclusiveLock {
 /// provided that `RawShareLock` is implemented), where `n` is the number of times
 /// `exc_lock` and `exc_split` are called combined
 pub unsafe trait SplittableExclusiveLock: RawExclusiveLock {
+    /// Re-acquire the lock without checking if it was already acquired.
+    /// This can be used to logically split the lock into multiple non-overlapping
+    /// parts.
+    ///
+    /// i.e. [`ExclusiveGuard::split_map`](crate::exclusive_lock::guard::ExclusiveGuard::split_map)
+    ///
+    /// acquires a *exc lock*
+    ///
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
@@ -51,17 +73,33 @@ pub unsafe trait SplittableExclusiveLock: RawExclusiveLock {
     unsafe fn exc_split(&self);
 }
 
+/// Additional methods for locks which support fair unlocking.
+///
+/// Fair unlocking means that a lock is handed directly over to
+/// the next waiting thread if there is one, without giving other
+/// threads the opportunity to "steal" the lock in the meantime.
+/// This is typically slower than unfair unlocking, but may be necessary
+/// in certain circumstances.
+///
 /// # Safety
 ///
 /// same safety notes about `exc_unlock` apply to `exc_unlock_fair`
 /// same safety notes about `exc_bump` apply to `exc_bump_fair`
 pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
+    /// Unlock a single exclusive lock using a fair unlock protocol
+    ///
+    /// releases a *exc lock*
+    ///
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_unlock_fair(&self);
 
+    /// Temporarily yields the lock to a waiting thread if there is one.
+    /// This method is functionally equivalent to calling `exc_unlock_fair` followed by `exc_lock`,
+    /// however it can be much more efficient in the case where there are no waiting threads.
+    ///
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
@@ -75,6 +113,13 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
 pub unsafe trait RawExclusiveLockDowngrade:
     RawExclusiveLock + crate::share_lock::RawShareLock
 {
+    /// Atomically downgrades a *exc lock* to a *shr lock*
+    ///
+    /// This is equivalent to `exc_unlock` followed by `shr_lock`, but it is
+    /// non-blocking, and cannot be preempted.
+    ///
+    /// This releases a *exc lock* and acquires a *shr lock*
+    ///
     /// # Safety
     ///
     /// * the caller must own a exclusive lock
