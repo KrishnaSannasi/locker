@@ -214,11 +214,17 @@ impl<L: Finish, T> OnceCell<L, T> {
         }
     }
 
+    /// # Safety
+    ///
+    /// The `OnceCell` must have be initialized
     #[inline]
     pub unsafe fn get_unchecked(&self) -> &T {
         &*self.value.get().cast::<T>()
     }
 
+    /// # Safety
+    ///
+    /// The `OnceCell` must have be initialized
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         &mut *self.value.get().cast::<T>()
@@ -411,7 +417,7 @@ impl<L: Finish, F: FnMut(&OnceState) -> T, T> Lazy<L, T, F, Retry> {
     pub fn force_mut(this: &mut Self) -> &mut T {
         let inner = this.inner.get();
 
-        this.once.force_call_once(move |once_state| {
+        this.once.force_call_once_mut(move |once_state| {
             let inner = unsafe { &mut *inner };
 
             if let LazyInner::Func(ref mut func) = *inner {
@@ -526,40 +532,3 @@ impl<L: Finish, F: Fn() -> T, T> DerefMut for RacyLazy<L, T, F> {
         Self::force_mut(self)
     }
 }
-
-// #[test]
-// #[should_panic(expected = "tried to call `call_once*` on a poisoned `Once`")]
-// pub fn second_force_should_panic() {
-//     use std::sync::atomic::{AtomicBool, Ordering};
-//     static ATOMIC: AtomicBool = AtomicBool::new(true);
-//     static ONCE: prelude::Lazy<u32> = prelude::Lazy::new(|| {
-//         if ATOMIC.swap(false, Ordering::Relaxed) {
-//             panic!();
-//         }
-
-//         0xDEAD_BEEF
-//     });
-
-//     let _ = std::panic::catch_unwind(move || prelude::Lazy::force(&ONCE));
-
-//     // this should panic due to a poisoned `Once`
-//     prelude::Lazy::force(&ONCE);
-// }
-
-// #[test]
-// pub fn second_force_should_retry() {
-//     type Lazy = prelude::RetryLazy<u32>;
-
-//     use std::sync::atomic::{AtomicBool, Ordering};
-//     static ATOMIC: AtomicBool = AtomicBool::new(true);
-//     static ONCE: Lazy = Lazy::new(|_once_state| {
-//         if ATOMIC.swap(false, Ordering::Relaxed) {
-//             panic!();
-//         }
-
-//         0xDEAD_BEEF
-//     });
-
-//     let _ = std::panic::catch_unwind(move || Lazy::force(&ONCE));
-//     assert_eq!(*Lazy::force(&ONCE), 0xDEAD_BEEF);
-// }

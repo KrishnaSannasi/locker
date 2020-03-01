@@ -8,6 +8,9 @@ use crate::mutex::RawMutex;
 use crate::reentrant::RawReentrantMutex;
 use crate::rwlock::RawRwLock;
 
+/// Wraps a lock and always calls `*unlock_fair` or `*bump_fair` instead of `*unlock` or `*bump`
+///
+/// Thus is an always fair lock
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Fair<L: ?Sized>(pub L);
 
