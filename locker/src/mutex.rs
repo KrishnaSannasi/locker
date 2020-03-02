@@ -7,6 +7,7 @@ cfg_if::cfg_if! {
         pub mod global;
         pub mod spin;
         pub mod tagged;
+        pub mod tagged_spin;
         pub mod local_simple;
         pub mod local_tagged;
         pub mod local_splittable;

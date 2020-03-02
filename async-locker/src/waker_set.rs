@@ -4,23 +4,20 @@
 //! notified later on. The `WakerSet` type helps with keeping track of such async operations and
 //! notifying them when they may make progress.
 
-use std::cell::UnsafeCell;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::Ordering;
 use std::task::{Context, Waker};
 
 use crate::slab::{Index, Slab};
-use crossbeam_utils::Backoff;
+use locker::mutex::tagged_spin::RawLock;
 
-/// Set when the entry list is locked.
-#[allow(clippy::identity_op)]
-const LOCKED: usize = 1 << 0;
+type Mutex<T> = locker::mutex::Mutex<RawLock, T>;
 
 /// Set when there is at least one entry that has already been notified.
-const NOTIFIED: usize = 1 << 1;
+const NOTIFIED: u8 = 0b01;
 
 /// Set when there is at least one notifiable entry.
-const NOTIFIABLE: usize = 1 << 2;
+const NOTIFIABLE: u8 = 0b10;
 
 /// Inner representation of `WakerSet`.
 struct Inner {
@@ -39,11 +36,8 @@ struct Inner {
 
 /// A set holding wakers.
 pub struct WakerSet {
-    /// Holds three bits: `LOCKED`, `NOTIFY_ONE`, and `NOTIFY_ALL`.
-    flag: AtomicUsize,
-
-    /// A set holding wakers.
-    inner: UnsafeCell<Inner>,
+    /// Holds 2 bits: `NOTIFY_ONE`, and `NOTIFY_ALL`.
+    inner: Mutex<Inner>,
 }
 
 impl WakerSet {
@@ -51,8 +45,7 @@ impl WakerSet {
     #[inline]
     pub const fn new() -> WakerSet {
         WakerSet {
-            flag: AtomicUsize::new(0),
-            inner: UnsafeCell::new(Inner {
+            inner: RawLock::mutex(Inner {
                 entries: Slab::new(),
                 notifiable: 0,
             }),
@@ -105,13 +98,17 @@ impl WakerSet {
         false
     }
 
+    fn flag(&self) -> u8 {
+        // Use `Acquire` ordering to synchronize with `Lock::drop()`.
+        self.inner.raw().inner().tag(Ordering::Acquire)
+    }
+
     /// Notifies a blocked operation if none have been notified already.
     ///
     /// Returns `true` if an operation was notified.
     #[inline]
     pub fn notify_any(&self) -> bool {
-        // Use `SeqCst` ordering to synchronize with `Lock::drop()`.
-        let flag = self.flag.load(Ordering::SeqCst);
+        let flag = self.flag();
 
         if flag & NOTIFIED == 0 && flag & NOTIFIABLE != 0 {
             self.notify(Notify::Any)
@@ -126,8 +123,7 @@ impl WakerSet {
     #[inline]
     #[cfg(feature = "unstable")]
     pub fn notify_one(&self) -> bool {
-        // Use `SeqCst` ordering to synchronize with `Lock::drop()`.
-        if self.flag.load(Ordering::SeqCst) & NOTIFIABLE != 0 {
+        if self.flag() & NOTIFIABLE != 0 {
             self.notify(Notify::One)
         } else {
             false
@@ -139,8 +135,7 @@ impl WakerSet {
     /// Returns `true` if at least one operation was notified.
     #[inline]
     pub fn notify_all(&self) -> bool {
-        // Use `SeqCst` ordering to synchronize with `Lock::drop()`.
-        if self.flag.load(Ordering::SeqCst) & NOTIFIABLE != 0 {
+        if self.flag() & NOTIFIABLE != 0 {
             self.notify(Notify::All)
         } else {
             false
@@ -177,17 +172,15 @@ impl WakerSet {
 
     /// Locks the list of entries.
     fn lock(&self) -> Lock<'_> {
-        let backoff = Backoff::new();
-        while self.flag.fetch_or(LOCKED, Ordering::Acquire) & LOCKED != 0 {
-            backoff.snooze();
+        Lock {
+            waker_set: self.inner.lock(),
         }
-        Lock { waker_set: self }
     }
 }
 
 /// A guard holding a `WakerSet` locked.
 struct Lock<'a> {
-    waker_set: &'a WakerSet,
+    waker_set: locker::exclusive_lock::ExclusiveGuard<'a, RawLock, Inner>,
 }
 
 impl Drop for Lock<'_> {
@@ -205,8 +198,10 @@ impl Drop for Lock<'_> {
             flag |= NOTIFIABLE;
         }
 
-        // Use `SeqCst` ordering to synchronize with `WakerSet::lock_to_notify()`.
-        self.waker_set.flag.store(flag, Ordering::SeqCst);
+        self.waker_set
+            .raw()
+            .inner()
+            .swap_tag(flag, Ordering::Relaxed);
     }
 }
 
@@ -215,14 +210,14 @@ impl Deref for Lock<'_> {
 
     #[inline]
     fn deref(&self) -> &Inner {
-        unsafe { &*self.waker_set.inner.get() }
+        &self.waker_set
     }
 }
 
 impl DerefMut for Lock<'_> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Inner {
-        unsafe { &mut *self.waker_set.inner.get() }
+        &mut self.waker_set
     }
 }
 
