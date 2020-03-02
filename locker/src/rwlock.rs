@@ -12,6 +12,8 @@ cfg_if::cfg_if! {
 
         #[cfg(feature = "parking_lot_core")]
         pub mod simple;
+        #[cfg(feature = "parking_lot_core")]
+        pub mod splittable;
     }
 }
 

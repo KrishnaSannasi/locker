@@ -37,20 +37,6 @@ where
             }
         }
     }
-
-    pub fn new(lock: &'a L) -> Self {
-        lock.exc_lock();
-
-        unsafe { Self::from_raw(lock) }
-    }
-
-    pub fn try_new(lock: &'a L) -> Option<Self> {
-        if lock.exc_try_lock() {
-            unsafe { Some(Self::from_raw(lock)) }
-        } else {
-            None
-        }
-    }
 }
 
 impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {

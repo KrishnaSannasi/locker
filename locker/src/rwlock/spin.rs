@@ -1,6 +1,7 @@
 use crate::spin_wait::SpinWait;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
 
@@ -18,8 +19,12 @@ impl RawLock {
         }
     }
 
+    pub const fn raw_mutex() -> RawMutex {
+        unsafe { RawMutex::from_raw(Self::new()) }
+    }
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
-        unsafe { Mutex::from_raw_parts(Self::new(), value) }
+        Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
     pub const fn rwlock<T>(value: T) -> RwLock<T> {

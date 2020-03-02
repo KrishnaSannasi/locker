@@ -1,5 +1,6 @@
 use std::cell::Cell;
 
+pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 
 pub struct RawLock {
@@ -14,8 +15,12 @@ impl RawLock {
         }
     }
 
+    pub const fn raw_mutex() -> RawMutex {
+        unsafe { RawMutex::from_raw(Self::new()) }
+    }
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
-        unsafe { Mutex::from_raw_parts(Self::new(), value) }
+        Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 }
 

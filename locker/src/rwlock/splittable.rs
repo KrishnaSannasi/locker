@@ -17,6 +17,7 @@ const TOKEN_HANDOFF_EXCLUSIVE: UnparkToken = UnparkToken(1);
 // thread directly without unlocking it.
 const TOKEN_HANDOFF_SHARED: UnparkToken = UnparkToken(2);
 
+pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
 
@@ -39,8 +40,12 @@ impl RawLock {
         }
     }
 
+    pub const fn raw_mutex() -> RawMutex {
+        unsafe { RawMutex::from_raw(Self::new()) }
+    }
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
-        unsafe { Mutex::from_raw_parts(Self::new(), value) }
+        Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
@@ -238,7 +243,7 @@ impl RawLock {
                     } else {
                         return true;
                     }
-    
+
                     continue;
                 }
             }
@@ -268,7 +273,7 @@ impl RawLock {
 
                 // if there is a excue lock
                 if state & (EXC_BIT | PARK_BIT) == EXC_BIT | PARK_BIT {
-                    return true
+                    return true;
                 }
 
                 // or if there isn't enough space to create a new shared lock

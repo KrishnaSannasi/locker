@@ -4,11 +4,16 @@ use crate::RawLockInfo;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Global;
 
+pub type RawMutex = crate::mutex::raw::Mutex<Global>;
 pub type Mutex<T> = crate::mutex::Mutex<Global, T>;
 
 impl Global {
+    pub const fn raw_mutex() -> RawMutex {
+        unsafe { RawMutex::from_raw(Self) }
+    }
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
-        unsafe { Mutex::from_raw_parts(Self, value) }
+        Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
@@ -40,7 +45,7 @@ impl Global {
 
     #[inline]
     pub fn will_mutex_contend<T: ?Sized, U: ?Sized>(a: &Mutex<T>, b: &Mutex<U>) -> bool {
-        a.raw().addr() == b.raw().addr()
+        a.raw().inner().addr() == b.raw().inner().addr()
     }
 }
 

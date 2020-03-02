@@ -18,10 +18,12 @@ cfg_if::cfg_if! {
     }
 }
 
+pub mod raw;
+
 pub unsafe trait RawMutex: crate::RawLockInfo + RawExclusiveLock {}
 #[repr(C)]
 pub struct Mutex<L, T: ?Sized> {
-    lock: L,
+    raw: raw::Mutex<L>,
     value: UnsafeCell<T>,
 }
 
@@ -40,22 +42,16 @@ impl<L, T> Mutex<L, T> {
     ///
     /// You must pass `RawUniueLock::INIT` as lock
     #[inline]
-    pub const unsafe fn from_raw_parts(lock: L, value: T) -> Self {
+    pub const fn from_raw_parts(raw: raw::Mutex<L>, value: T) -> Self {
         Self {
-            lock,
+            raw,
             value: UnsafeCell::new(value),
         }
     }
 
     #[inline]
-    pub fn into_raw_parts(self) -> (L, T) {
-        (self.lock, self.value.into_inner())
-    }
-
-    #[inline]
-    pub fn into_mutex(self) -> crate::mutex::Mutex<L, T> {
-        let (lock, value) = self.into_raw_parts();
-        unsafe { crate::mutex::Mutex::from_raw_parts(lock, value) }
+    pub fn into_raw_parts(self) -> (raw::Mutex<L>, T) {
+        (self.raw, self.value.into_inner())
     }
 
     #[inline]
@@ -78,15 +74,15 @@ impl<L, T: ?Sized> Mutex<L, T> {
     }
 
     #[inline]
-    pub const fn raw(&self) -> &L {
-        &self.lock
+    pub const fn raw(&self) -> &raw::Mutex<L> {
+        &self.raw
     }
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
-            pub const unsafe fn raw_mut(&mut self) -> &mut L {
-                &mut self.lock
+            pub const unsafe fn raw_mut(&mut self) -> &mut raw::Mutex<L> {
+                &mut self.raw
             }
 
             #[inline]
@@ -95,8 +91,8 @@ impl<L, T: ?Sized> Mutex<L, T> {
             }
         } else {
             #[inline]
-            pub unsafe fn raw_mut(&mut self) -> &mut L {
-                &mut self.lock
+            pub unsafe fn raw_mut(&mut self) -> &mut raw::Mutex<L> {
+                &mut self.raw
             }
 
             #[inline]
@@ -117,7 +113,7 @@ impl<L: RawMutex, T> Mutex<L, T> {
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(L::INIT, value) }
+                unsafe { Self::from_raw_parts(raw::Mutex::from_raw(L::INIT), value) }
             }
         }
     }
@@ -129,16 +125,14 @@ where
 {
     #[inline]
     pub fn lock(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe {
-            ExclusiveGuard::from_raw_parts(RawExclusiveGuard::new(&self.lock), self.value.get())
-        }
+        unsafe { ExclusiveGuard::from_raw_parts(self.raw.lock(), self.value.get()) }
     }
 
     #[inline]
     pub fn try_lock(&self) -> Option<ExclusiveGuard<'_, L, T>> {
         unsafe {
             Some(ExclusiveGuard::from_raw_parts(
-                RawExclusiveGuard::try_new(&self.lock)?,
+                self.raw.try_lock()?,
                 self.value.get(),
             ))
         }

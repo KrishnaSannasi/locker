@@ -11,6 +11,7 @@ const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
 // thread directly without unlocking it.
 const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 
+pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
 
 #[inline]
@@ -87,8 +88,12 @@ impl RawLock {
         state >> Self::SHIFT
     }
 
+    pub const fn raw_mutex() -> RawMutex {
+        unsafe { RawMutex::from_raw(Self::new()) }
+    }
+
     pub const fn mutex<T>(value: T) -> Mutex<T> {
-        unsafe { Mutex::from_raw_parts(Self::new(), value) }
+        Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 }
 
