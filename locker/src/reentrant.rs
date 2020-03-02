@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 use std::num::NonZeroUsize;
 
-use crate::share_lock::{RawShareGuard, RawShareLock, ShareGuard};
+use crate::share_lock::{RawShareLock, ShareGuard};
 
 #[cfg(feature = "extra")]
 pub mod simple;
@@ -11,6 +11,8 @@ pub mod std_thread;
 
 #[cfg(all(feature = "extra", feature = "std"))]
 pub mod global;
+
+pub mod raw;
 
 /// # Safety
 ///
@@ -27,7 +29,7 @@ pub unsafe trait ThreadInfo {
 pub unsafe trait RawReentrantMutex: crate::RawLockInfo + RawShareLock {}
 #[repr(C)]
 pub struct ReentrantMutex<L, T: ?Sized> {
-    lock: L,
+    raw: raw::ReentrantMutex<L>,
     value: UnsafeCell<T>,
 }
 
@@ -45,16 +47,16 @@ impl<L, T> ReentrantMutex<L, T> {
     ///
     /// You must pass `RawUniueLock::INIT` as lock
     #[inline]
-    pub const unsafe fn from_raw_parts(lock: L, value: T) -> Self {
+    pub const fn from_raw_parts(raw: raw::ReentrantMutex<L>, value: T) -> Self {
         Self {
-            lock,
+            raw,
             value: UnsafeCell::new(value),
         }
     }
 
     #[inline]
-    pub fn into_raw_parts(self) -> (L, T) {
-        (self.lock, self.value.into_inner())
+    pub fn into_raw_parts(self) -> (raw::ReentrantMutex<L>, T) {
+        (self.raw, self.value.into_inner())
     }
 
     #[inline]
@@ -65,15 +67,15 @@ impl<L, T> ReentrantMutex<L, T> {
 
 impl<L, T: ?Sized> ReentrantMutex<L, T> {
     #[inline]
-    pub const fn raw(&self) -> &L {
-        &self.lock
+    pub const fn raw(&self) -> &raw::ReentrantMutex<L> {
+        &self.raw
     }
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
-            pub const unsafe fn raw_mut(&mut self) -> &mut L {
-                &mut self.lock
+            pub const unsafe fn raw_mut(&mut self) -> &mut raw::ReentrantMutex<L> {
+                &mut self.raw
             }
 
             #[inline]
@@ -82,8 +84,8 @@ impl<L, T: ?Sized> ReentrantMutex<L, T> {
             }
         } else {
             #[inline]
-            pub unsafe fn raw_mut(&mut self) -> &mut L {
-                &mut self.lock
+            pub unsafe fn raw_mut(&mut self) -> &mut raw::ReentrantMutex<L> {
+                &mut self.raw
             }
 
             #[inline]
@@ -99,12 +101,12 @@ impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(L::INIT, value) }
+                unsafe { Self::from_raw_parts(raw::ReentrantMutex::from_raw(L::INIT), value) }
             }
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(L::INIT, value) }
+                unsafe { Self::from_raw_parts(raw::ReentrantMutex::from_raw(L::INIT), value) }
             }
         }
     }
@@ -116,14 +118,14 @@ where
 {
     #[inline]
     pub fn lock(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(RawShareGuard::new(&self.lock), self.value.get()) }
+        unsafe { ShareGuard::from_raw_parts(self.raw.lock(), self.value.get()) }
     }
 
     #[inline]
     pub fn try_lock(&self) -> Option<ShareGuard<'_, L, T>> {
         unsafe {
             Some(ShareGuard::from_raw_parts(
-                RawShareGuard::try_new(&self.lock)?,
+                self.raw.try_lock()?,
                 self.value.get(),
             ))
         }

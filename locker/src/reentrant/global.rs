@@ -4,11 +4,16 @@ use crate::RawLockInfo;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Global;
 
+pub type RawReentrantMutex = crate::reentrant::raw::ReentrantMutex<Global>;
 pub type ReentrantMutex<T> = crate::reentrant::ReentrantMutex<Global, T>;
 
 impl Global {
+    pub const fn raw_remutex() -> RawReentrantMutex {
+        unsafe { RawReentrantMutex::from_raw(Self) }
+    }
+
     pub const fn remutex<T>(value: T) -> ReentrantMutex<T> {
-        unsafe { ReentrantMutex::from_raw_parts(Self, value) }
+        ReentrantMutex::from_raw_parts(Self::raw_remutex(), value)
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
@@ -43,7 +48,7 @@ impl Global {
         a: &ReentrantMutex<T>,
         b: &ReentrantMutex<U>,
     ) -> bool {
-        a.raw().addr() == b.raw().addr()
+        a.raw().inner().addr() == b.raw().inner().addr()
     }
 }
 

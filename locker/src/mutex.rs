@@ -1,6 +1,6 @@
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveGuard, RawExclusiveLock};
+use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLock};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
