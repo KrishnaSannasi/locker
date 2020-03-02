@@ -1,25 +1,11 @@
 use std::cell::UnsafeCell;
 
 use crate::exclusive_lock::ExclusiveGuard;
-use crate::share_lock::{RawShareLock, ShareGuard};
+use crate::share_lock::ShareGuard;
+use locker::rwlock::RawRwLock;
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "extra")] {
-        pub mod global;
-        pub mod spin;
-        pub mod local_simple;
-        pub mod local_splittable;
+mod raw;
 
-        #[cfg(feature = "parking_lot_core")]
-        pub mod simple;
-        #[cfg(feature = "parking_lot_core")]
-        pub mod splittable;
-    }
-}
-
-pub mod raw;
-
-pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock {}
 #[repr(C)]
 pub struct RwLock<L, T: ?Sized> {
     raw: raw::RwLock<L>,
@@ -107,12 +93,12 @@ impl<L: RawRwLock, T> RwLock<L, T> {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::RwLock::from_raw(L::INIT), value) }
+                unsafe { Self::from_raw_parts(raw::RwLock::new(), value) }
             }
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::RwLock::from_raw(L::INIT), value) }
+                Self::from_raw_parts(raw::RwLock::new(), value)
             }
         }
     }
@@ -120,12 +106,12 @@ impl<L: RawRwLock, T> RwLock<L, T> {
 
 impl<L: RawRwLock, T: ?Sized> RwLock<L, T>
 where
-    L::ExclusiveGuardTraits: crate::Inhabitted,
-    L::ShareGuardTraits: crate::Inhabitted,
+    L::ExclusiveGuardTraits: locker::Inhabitted,
+    L::ShareGuardTraits: locker::Inhabitted,
 {
     #[inline]
-    pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe { ExclusiveGuard::from_raw_parts(self.raw.write(), self.value.get()) }
+    pub async fn write(&self) -> ExclusiveGuard<'_, L, T> {
+        unsafe { ExclusiveGuard::from_raw_parts(self.raw.write().await, self.value.get()) }
     }
 
     #[inline]
@@ -139,8 +125,8 @@ where
     }
 
     #[inline]
-    pub fn read(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(self.raw.read(), self.value.get()) }
+    pub async fn read(&self) -> ShareGuard<'_, L, T> {
+        unsafe { ShareGuard::from_raw_parts(self.raw.read().await, self.value.get()) }
     }
 
     #[inline]
