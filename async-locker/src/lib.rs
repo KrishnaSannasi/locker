@@ -11,4 +11,4 @@ pub mod reentrant;
 pub mod rwlock;
 pub mod share_lock;
 mod slab;
-mod waker_set;
+pub mod waker_set;
