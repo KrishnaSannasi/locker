@@ -133,26 +133,24 @@ impl<A: Inhabitted, B: Inhabitted> Inhabitted for (A, B) {
 }
 
 pub mod combinators;
-#[allow(missing_docs)]
 mod defer;
 #[allow(missing_docs)]
-pub mod exclusive_lock;
+pub mod exclusive_lock; // 22
 #[allow(missing_docs)]
-pub mod mutex;
+pub mod mutex; // 71
 #[allow(missing_docs)]
-pub mod once;
+pub mod once; // 64
 #[allow(missing_docs)]
-pub mod reentrant;
+pub mod reentrant; // 28
 #[allow(missing_docs)]
-pub mod rwlock;
+pub mod rwlock; // 59
 #[allow(missing_docs)]
-pub mod share_lock;
-#[allow(missing_docs)]
+pub mod share_lock; // 20
 mod spin_wait;
 
 #[allow(missing_docs)]
 #[cfg(feature = "parking_lot_core")]
-pub mod condvar;
+pub mod condvar; // 25
 #[allow(missing_docs)]
 #[cfg(feature = "parking_lot_core")]
-pub mod waiter;
+pub mod waiter; // 25

@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    'async-locker',
     'locker',
 
     # 'core-condvar',
