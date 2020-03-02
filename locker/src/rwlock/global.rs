@@ -7,6 +7,7 @@ pub struct Global;
 
 pub type RawMutex = crate::mutex::raw::Mutex<Global>;
 pub type Mutex<T> = crate::mutex::Mutex<Global, T>;
+pub type RawRwLock = crate::rwlock::raw::RwLock<Global>;
 pub type RwLock<T> = crate::rwlock::RwLock<Global, T>;
 
 impl Global {
@@ -18,8 +19,12 @@ impl Global {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
+    pub const fn raw_rwlock() -> RawRwLock {
+        unsafe { RawRwLock::from_raw(Self) }
+    }
+
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
-        unsafe { RwLock::from_raw_parts(Self, value) }
+        RwLock::from_raw_parts(Self::raw_rwlock(), value)
     }
 
     #[allow(clippy::transmute_ptr_to_ptr)]
@@ -71,7 +76,7 @@ impl Global {
 
     #[inline]
     pub fn will_rwlock_contend<T: ?Sized, U: ?Sized>(a: &RwLock<T>, b: &RwLock<U>) -> bool {
-        a.raw().addr() == b.raw().addr()
+        a.raw().inner().addr() == b.raw().inner().addr()
     }
 }
 

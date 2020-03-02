@@ -19,6 +19,7 @@ const TOKEN_HANDOFF_SHARED: UnparkToken = UnparkToken(2);
 
 pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
+pub type RawRwLock = crate::rwlock::raw::RwLock<RawLock>;
 pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
 
 const PARK_BIT: usize = 0b001;
@@ -48,8 +49,12 @@ impl RawLock {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
+    pub const fn raw_rwlock() -> RawRwLock {
+        unsafe { RawRwLock::from_raw(Self::new()) }
+    }
+
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
-        unsafe { RwLock::from_raw_parts(Self::new(), value) }
+        RwLock::from_raw_parts(Self::raw_rwlock(), value)
     }
 
     #[cold]

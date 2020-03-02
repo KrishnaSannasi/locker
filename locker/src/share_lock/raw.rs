@@ -34,20 +34,6 @@ where
             }
         }
     }
-
-    pub fn new(lock: &'a L) -> Self {
-        lock.shr_lock();
-
-        unsafe { Self::from_raw(lock) }
-    }
-
-    pub fn try_new(lock: &'a L) -> Option<Self> {
-        if lock.shr_try_lock() {
-            unsafe { Some(Self::from_raw(lock)) }
-        } else {
-            None
-        }
-    }
 }
 
 impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {

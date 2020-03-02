@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveGuard};
-use crate::share_lock::{RawShareGuard, RawShareLock, ShareGuard};
+use crate::exclusive_lock::ExclusiveGuard;
+use crate::share_lock::{RawShareLock, ShareGuard};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
@@ -17,10 +17,12 @@ cfg_if::cfg_if! {
     }
 }
 
+mod raw;
+
 pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock {}
 #[repr(C)]
 pub struct RwLock<L, T: ?Sized> {
-    lock: L,
+    raw: raw::RwLock<L>,
     value: UnsafeCell<T>,
 }
 
@@ -39,22 +41,16 @@ impl<L, T> RwLock<L, T> {
     ///
     /// You must pass `RawUniueLock::INIT` as lock
     #[inline]
-    pub const unsafe fn from_raw_parts(lock: L, value: T) -> Self {
+    pub const fn from_raw_parts(raw: raw::RwLock<L>, value: T) -> Self {
         Self {
-            lock,
+            raw,
             value: UnsafeCell::new(value),
         }
     }
 
     #[inline]
-    pub fn into_raw_parts(self) -> (L, T) {
-        (self.lock, self.value.into_inner())
-    }
-
-    #[inline]
-    pub fn into_rwlock(self) -> crate::rwlock::RwLock<L, T> {
-        let (lock, value) = self.into_raw_parts();
-        unsafe { crate::rwlock::RwLock::from_raw_parts(lock, value) }
+    pub fn into_raw_parts(self) -> (raw::RwLock<L>, T) {
+        (self.raw, self.value.into_inner())
     }
 
     #[inline]
@@ -77,15 +73,15 @@ impl<L, T: ?Sized> RwLock<L, T> {
     }
 
     #[inline]
-    pub const fn raw(&self) -> &L {
-        &self.lock
+    pub const fn raw(&self) -> &raw::RwLock<L> {
+        &self.raw
     }
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
-            pub const unsafe fn raw_mut(&mut self) -> &mut L {
-                &mut self.lock
+            pub const unsafe fn raw_mut(&mut self) -> &mut raw::RwLock<L> {
+                &mut self.raw
             }
 
             #[inline]
@@ -94,8 +90,8 @@ impl<L, T: ?Sized> RwLock<L, T> {
             }
         } else {
             #[inline]
-            pub unsafe fn raw_mut(&mut self) -> &mut L {
-                &mut self.lock
+            pub unsafe fn raw_mut(&mut self) -> &mut raw::RwLock<L> {
+                &mut self.raw
             }
 
             #[inline]
@@ -116,7 +112,7 @@ impl<L: RawRwLock, T> RwLock<L, T> {
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(L::INIT, value) }
+                unsafe { Self::from_raw_parts(raw::RwLock::from_raw(L::INIT), value) }
             }
         }
     }
@@ -129,31 +125,33 @@ where
 {
     #[inline]
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe {
-            ExclusiveGuard::from_raw_parts(RawExclusiveGuard::new(&self.lock), self.value.get())
-        }
+        todo!()
+        // unsafe {
+        //     ExclusiveGuard::from_raw_parts(RawExclusiveGuard::new(&self.lock), self.value.get())
+        // }
     }
 
     #[inline]
     pub fn try_write(&self) -> Option<ExclusiveGuard<'_, L, T>> {
-        unsafe {
-            Some(ExclusiveGuard::from_raw_parts(
-                RawExclusiveGuard::try_new(&self.lock)?,
-                self.value.get(),
-            ))
-        }
+        todo!()
+        // unsafe {
+        //     Some(ExclusiveGuard::from_raw_parts(
+        //         RawExclusiveGuard::try_new(&self.lock)?,
+        //         self.value.get(),
+        //     ))
+        // }
     }
 
     #[inline]
     pub fn read(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(RawShareGuard::new(&self.lock), self.value.get()) }
+        unsafe { ShareGuard::from_raw_parts(self.raw.read(), self.value.get()) }
     }
 
     #[inline]
     pub fn try_read(&self) -> Option<ShareGuard<'_, L, T>> {
         unsafe {
             Some(ShareGuard::from_raw_parts(
-                RawShareGuard::try_new(&self.lock)?,
+                self.raw.try_read()?,
                 self.value.get(),
             ))
         }
