@@ -8,7 +8,8 @@ use std::ops::{Deref, DerefMut};
 use std::sync::atomic::Ordering;
 use std::task::{Context, Waker};
 
-use crate::slab::{Index, Slab};
+pub use crate::slab::Index;
+use crate::slab::Slab;
 use locker::mutex::tagged_spin::RawLock;
 
 type Mutex<T> = locker::mutex::Mutex<RawLock, T>;
