@@ -125,21 +125,17 @@ where
 {
     #[inline]
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        todo!()
-        // unsafe {
-        //     ExclusiveGuard::from_raw_parts(RawExclusiveGuard::new(&self.lock), self.value.get())
-        // }
+        unsafe { ExclusiveGuard::from_raw_parts(self.raw.write(), self.value.get()) }
     }
 
     #[inline]
     pub fn try_write(&self) -> Option<ExclusiveGuard<'_, L, T>> {
-        todo!()
-        // unsafe {
-        //     Some(ExclusiveGuard::from_raw_parts(
-        //         RawExclusiveGuard::try_new(&self.lock)?,
-        //         self.value.get(),
-        //     ))
-        // }
+        unsafe {
+            Some(ExclusiveGuard::from_raw_parts(
+                self.raw.try_write()?,
+                self.value.get(),
+            ))
+        }
     }
 
     #[inline]
