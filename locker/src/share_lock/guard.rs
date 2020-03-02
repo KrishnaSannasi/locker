@@ -69,15 +69,15 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
         (self.raw, self.value)
     }
 
-    pub fn map<F: FnOnce(&T) -> &U, U: ?Sized>(self, f: F) -> ShareGuard<'a, L, U, Mapped> {
+    pub fn map<F, U: ?Sized>(self, f: impl FnOnce(&T) -> &U) -> ShareGuard<'a, L, U, Mapped> {
         let value = f(unsafe { &*self.value });
 
         unsafe { ShareGuard::from_raw_parts(self.raw, value) }
     }
 
-    pub fn try_map<F: FnOnce(&T) -> Result<&U, E>, E, U: ?Sized>(
+    pub fn try_map<E, U: ?Sized>(
         self,
-        f: F,
+        f: impl FnOnce(&T) -> Result<&U, E>,
     ) -> Result<ShareGuard<'a, L, U, Mapped>, TryMapError<E, Self>> {
         match f(unsafe { &*self.value }) {
             Ok(value) => Ok(unsafe { ShareGuard::from_raw_parts(self.raw, value) }),
@@ -85,13 +85,10 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
         }
     }
 
-    pub fn split_map<F, U: ?Sized, V: ?Sized>(
+    pub fn split_map<U: ?Sized, V: ?Sized>(
         self,
-        f: F,
-    ) -> (ShareGuard<'a, L, U, Mapped>, ShareGuard<'a, L, V, Mapped>)
-    where
-        F: FnOnce(&T) -> (&U, &V),
-    {
+        f: impl FnOnce(&T) -> (&U, &V),
+    ) -> (ShareGuard<'a, L, U, Mapped>, ShareGuard<'a, L, V, Mapped>) {
         let (u, v) = f(unsafe { &*self.value });
 
         let u_lock = self.raw.clone();
@@ -103,9 +100,9 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn try_split_map<F: FnOnce(&T) -> Result<(&U, &V), E>, E, U: ?Sized, V: ?Sized>(
+    pub fn try_split_map<E, U: ?Sized, V: ?Sized>(
         self,
-        f: F,
+        f: impl FnOnce(&T) -> Result<(&U, &V), E>,
     ) -> Result<(ShareGuard<'a, L, U, Mapped>, ShareGuard<'a, L, V, Mapped>), TryMapError<E, Self>>
     {
         match f(unsafe { &*self.value }) {

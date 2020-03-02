@@ -72,18 +72,18 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
         (self.raw, self.value)
     }
 
-    pub fn map<F: FnOnce(&mut T) -> &mut U, U: ?Sized>(
+    pub fn map<F, U: ?Sized>(
         self,
-        f: F,
+        f: impl FnOnce(&mut T) -> &mut U,
     ) -> ExclusiveGuard<'a, L, U, Mapped> {
         let value = f(unsafe { &mut *self.value });
 
         unsafe { ExclusiveGuard::from_raw_parts(self.raw, value) }
     }
 
-    pub fn try_map<F: FnOnce(&mut T) -> Result<&mut U, E>, E, U: ?Sized>(
+    pub fn try_map<E, U: ?Sized>(
         self,
-        f: F,
+        f: impl FnOnce(&mut T) -> Result<&mut U, E>,
     ) -> Result<ExclusiveGuard<'a, L, U, Mapped>, TryMapError<E, Self>> {
         match f(unsafe { &mut *self.value }) {
             Ok(value) => Ok(unsafe { ExclusiveGuard::from_raw_parts(self.raw, value) }),
@@ -93,16 +93,13 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
 }
 
 impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
-    pub fn split_map<F, U: ?Sized, V: ?Sized>(
+    pub fn split_map<U: ?Sized, V: ?Sized>(
         self,
-        f: F,
+        f: impl FnOnce(&mut T) -> (&mut U, &mut V),
     ) -> (
         ExclusiveGuard<'a, L, U, Mapped>,
         ExclusiveGuard<'a, L, V, Mapped>,
-    )
-    where
-        F: FnOnce(&mut T) -> (&mut U, &mut V),
-    {
+    ) {
         let (u, v) = f(unsafe { &mut *self.value });
 
         let u_lock = self.raw.clone();
@@ -115,14 +112,9 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn try_split_map<
-        F: FnOnce(&mut T) -> Result<(&mut U, &mut V), E>,
-        E,
-        U: ?Sized,
-        V: ?Sized,
-    >(
+    pub fn try_split_map<E, U: ?Sized, V: ?Sized>(
         self,
-        f: F,
+        f: impl FnOnce(&mut T) -> Result<(&mut U, &mut V), E>,
     ) -> Result<
         (
             ExclusiveGuard<'a, L, U, Mapped>,
