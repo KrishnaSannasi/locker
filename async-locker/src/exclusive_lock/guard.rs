@@ -1,5 +1,7 @@
 use super::raw::RawExclusiveGuard;
-use locker::exclusive_lock::{RawExclusiveLock, SplittableExclusiveLock};
+use locker::exclusive_lock::{
+    RawExclusiveLock, RawExclusiveLockDowngrade, SplittableExclusiveLock,
+};
 use locker::RawLockInfo;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -137,14 +139,14 @@ impl<'a, L: SplittableExclusiveLock + RawExclusiveLock + RawLockInfo, T: ?Sized,
     }
 }
 
-// impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St>
-// where
-//     L::ShareGuardTraits: crate::Inhabitted,
-// {
-//     pub fn downgrade(g: Self) -> crate::share_lock::ShareGuard<'a, L, T, St> {
-//         unsafe { crate::share_lock::ShareGuard::from_raw_parts(g.raw.downgrade(), g.value) }
-//     }
-// }
+impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St>
+where
+    L::ShareGuardTraits: locker::Inhabitted,
+{
+    pub fn downgrade(g: Self) -> crate::share_lock::ShareGuard<'a, L, T, St> {
+        unsafe { crate::share_lock::ShareGuard::from_raw_parts(g.raw.downgrade(), g.value) }
+    }
+}
 
 impl<L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> Deref for ExclusiveGuard<'_, L, T, St> {
     type Target = T;

@@ -55,18 +55,18 @@ impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
     }
 }
 
-// impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo> RawExclusiveGuard<'a, L>
-// where
-//     L::ShareGuardTraits: locker::Inhabitted,
-// {
-//     pub fn downgrade(self) -> locker::share_lock::RawShareGuard<'a, L> {
-//         let g = std::mem::ManuallyDrop::new(self);
-//         unsafe {
-//             g.lock.downgrade();
-//             crate::share_lock::RawShareGuard::from_raw(g.lock)
-//         }
-//     }
-// }
+impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo> RawExclusiveGuard<'a, L>
+where
+    L::ShareGuardTraits: locker::Inhabitted,
+{
+    pub fn downgrade(self) -> crate::share_lock::RawShareGuard<'a, L> {
+        let g = std::mem::ManuallyDrop::new(self);
+        crate::share_lock::RawShareGuard::from_raw_parts(
+            unsafe { std::ptr::read(&*g.inner).downgrade() },
+            g.waker_set,
+        )
+    }
+}
 
 impl<L: RawExclusiveLock + SplittableExclusiveLock + RawLockInfo> Clone
     for RawExclusiveGuard<'_, L>
