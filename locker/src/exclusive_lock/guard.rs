@@ -159,11 +159,11 @@ impl<L: RawExclusiveLockFair + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'_, L,
     }
 }
 
-impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St>
+impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo, T: ?Sized> ExclusiveGuard<'a, L, T>
 where
     L::ShareGuardTraits: crate::Inhabitted,
 {
-    pub fn downgrade(g: Self) -> crate::share_lock::ShareGuard<'a, L, T, St> {
+    pub fn downgrade(g: Self) -> crate::share_lock::ShareGuard<'a, L, T> {
         unsafe { crate::share_lock::ShareGuard::from_raw_parts(g.raw.downgrade(), g.value) }
     }
 }
