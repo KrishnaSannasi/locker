@@ -2,3 +2,6 @@
 
 mod always_fair;
 pub use always_fair::Fair;
+
+mod reentrant_panic;
+pub use reentrant_panic::ReentrantPanic;
