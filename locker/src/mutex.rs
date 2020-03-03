@@ -11,6 +11,8 @@ cfg_if::cfg_if! {
         pub mod local_tagged;
         pub mod local_splittable;
 
+        pub mod word_lock;
+
         #[cfg(feature = "parking_lot_core")]
         pub mod simple;
         #[cfg(feature = "parking_lot_core")]
