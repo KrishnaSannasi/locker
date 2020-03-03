@@ -90,6 +90,14 @@ impl<'a, L: RawExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L,
             Err(e) => Err(TryMapError(e, self)),
         }
     }
+
+    pub fn bump(g: &mut Self) {
+        g.raw.bump()
+    }
+
+    pub fn unlocked<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
+        g.raw.unlocked(f)
+    }
 }
 
 impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard<'a, L, T, St> {
@@ -134,14 +142,6 @@ impl<'a, L: SplittableExclusiveLock + RawLockInfo, T: ?Sized, St> ExclusiveGuard
             }
             Err(e) => Err(TryMapError(e, self)),
         }
-    }
-
-    pub fn bump(g: &mut Self) {
-        g.raw.bump()
-    }
-
-    pub fn unlocked<R>(g: &mut Self, f: impl FnOnce() -> R) -> R {
-        g.raw.unlocked(f)
     }
 }
 
