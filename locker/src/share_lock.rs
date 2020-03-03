@@ -1,19 +1,36 @@
-pub mod guard;
-#[doc(hidden)]
-pub mod raw;
+mod guard;
+mod raw;
 
 pub use guard::{MappedShareGuard, ShareGuard};
-pub use raw::RawShareGuard;
+pub use raw::{RawShareGuard, _RawShareGuard};
 
-/// A raw sharable lock, this implementation is for any lock that can be shared
+#[cfg(doc)]
+use crate::RawLockInfo;
+
+/// A raw sharable lock, this implementation is for any lock that can be locked multiple times
+/// for some times slice.
 ///
-/// Some examples include `RwLock`'s reader locks and `RefCell`'s `Ref`, and
-/// `ReentrantMutex`'s locks. The last one may sound strange, but `ReentrantMutex`'s
-/// locks are shared within a single thread. They provide mutual exclusion across threads,
-/// but that's too weak of a guarantee to be used with [`RawExclusiveLock`](crate::exclusive_lock::RawExclusiveLock).
+/// Some examples include `RwLock`'s reader locks and `RefCell`'s `Ref`, and `ReentrantMutex`'s
+/// locks (which can be shared in a single thread).
 ///
+/// # *shr lock*
 ///
-/// Any lock that can be shared allows sharing in any fasion can use this interface.
+/// Throughout this documentation you may see references to *shr lock*. A *shr lock* represents a single lock
+/// resource. This resource prevents any thread from acquiring an [*exc lock*](crate::exclusive_lock::RawExclusiveLock#*exc-lock*),
+///
+/// One acquires ownership of a *shr lock* by calling [`RawShareLock::shr_lock`], by
+/// [`RawShareLock::shr_try_lock`] if it returns true, and finally by calling [`RawShareLock::shr_split`]
+///
+/// One releases ownership a *shr lock* by calling [`RawShareLock::shr_unlock`] or [`RawShareLockFair::shr_unlock_fair`]
+///
+/// While a *shr lock* exists, then more *shr lock*s can be acquired, by using any of the methods listed above.
+/// But an [*exc lock*](crate::exclusive_lock::RawExclusiveLock#*exc-lock*) cannot be acquired.
+///
+/// A the owner of a *shr lock* must repsect the trait bounds specified by [`RawLockInfo::ShareGuardTraits`].
+/// This means that if [`RawLockInfo::ShareGuardTraits`] is not [`Send`], then the *shr lock* cannot be transferred across
+/// thread boundries, and if it isn't [`Sync`], then the *shr lock* cannot be shared across thread boundries
+///
+/// All of these rules are enforced in a safe way through [`RawShareGuard`].
 ///
 /// # Safety
 ///

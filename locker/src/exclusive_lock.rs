@@ -5,6 +5,34 @@ pub mod raw;
 pub use guard::{ExclusiveGuard, MappedExclusiveGuard};
 pub use raw::RawExclusiveGuard;
 
+/// A raw exclusive lock, this implementation is for any lock that can only be locked once
+/// for any time slice.
+///
+/// Some examples include `RwLock`'s writer locks and `RefCell`'s `RefMut`, and
+/// `Mutex`'s locks.
+///
+/// # *exc lock*
+///
+/// Throughout this documentation you may see references to *shr lock*. A *exc lock* represents a single lock
+/// resource. This resource prevents any thread from acquiring another *exc lock*
+/// (except by using [`SplittableExclusiveLock::exc_split`]) or acquiring any [*shr lock*](crate::share_lock::RawShareLock#shr-lock)s
+///
+/// One acquires ownership of a *exc lock* by calling [`RawExclusiveLock::exc_lock`], by
+/// [`RawExclusiveLock::exc_try_lock`] if it returns true, and finally by calling [`SplittableExclusiveLock::exc_split`]
+///
+/// One releases a *exc lock* by calling [`RawExclusiveLock::exc_unlock`] or [`RawExclusiveLockFair::exc_unlock_fair`]
+///
+/// A the owner of a *exc lock* must repsect the trait bounds specified by [`RawLockInfo::ExclusiveGuardTraits`].
+/// This means that if [`RawLockInfo::ExclusiveGuardTraits`] is not [`Send`], then the *exc lock* cannot be transferred across
+/// thread boundries, and if it isn't [`Sync`], then the *exc lock* cannot be shared across thread boundries
+///
+/// All of these rules are enforced in a safe way through [`RawExclusiveGuard`].
+///
+/// ### `exc_split`
+///
+/// It is possible to hold multiple *exc lock* resources at the same time, by using [`SplittableExclusiveLock::exc_split`].
+/// In this case, each *exc lock* must guard access to completely disjoint resources.
+///
 /// # Safety
 ///
 /// * `exc_unlock` must be called before before `exc_lock`,
