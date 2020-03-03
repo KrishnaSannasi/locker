@@ -4,7 +4,7 @@ use parking_lot_core::{
 
 use super::{Parkable, WaitTimeoutResult};
 use crate::exclusive_lock::{raw::RawExclusiveGuard, RawExclusiveLock};
-use crate::share_lock::{raw::RawShareGuard, RawShareLock};
+use crate::share_lock::{RawShareGuard, RawShareLock};
 use crate::RawLockInfo;
 
 use std::ptr;
