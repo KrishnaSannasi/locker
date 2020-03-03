@@ -77,6 +77,7 @@ pub unsafe trait RawShareLock {
     unsafe fn shr_unlock(&self);
 
     /// Temporarily yields the lock to a waiting thread if there is one.
+    ///
     /// This method is functionally equivalent to calling `shr_unlock` followed by `shr_lock`,
     /// however it can be much more efficient in the case where there are no waiting threads.
     ///
@@ -114,6 +115,7 @@ pub unsafe trait RawShareLockFair: RawShareLock {
     unsafe fn shr_unlock_fair(&self);
 
     /// Temporarily yields the lock to a waiting thread if there is one.
+    ///
     /// This method is functionally equivalent to calling `shr_unlock_fair` followed by `shr_lock`,
     /// however it can be much more efficient in the case where there are no waiting threads.
     ///

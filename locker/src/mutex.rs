@@ -6,7 +6,6 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
         pub mod global;
         pub mod spin;
-        pub mod tagged;
         pub mod tagged_spin;
         pub mod local_simple;
         pub mod local_tagged;
@@ -14,6 +13,8 @@ cfg_if::cfg_if! {
 
         #[cfg(feature = "parking_lot_core")]
         pub mod simple;
+        #[cfg(feature = "parking_lot_core")]
+        pub mod tagged;
         #[cfg(feature = "parking_lot_core")]
         pub mod splittable;
     }

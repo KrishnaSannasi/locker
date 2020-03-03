@@ -157,7 +157,7 @@ unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for RawReen
 }
 
 #[test]
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "parking_lot"))]
 fn reentrant() {
     use crate::mutex::simple::RawLock;
 
@@ -175,7 +175,7 @@ fn reentrant() {
 }
 
 #[test]
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "parking_lot"))]
 fn reentrant_multi() {
     use crate::mutex::simple::RawLock;
 

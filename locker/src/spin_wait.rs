@@ -40,11 +40,16 @@ impl SpinWait {
         {
             if self.counter > 3 {
                 std::thread::yield_now();
-                return;
+                return self.counter < 10;
             }
         }
 
         cpu_relax(1 << self.counter);
-        true
+        self.counter < 10
+    }
+
+    #[inline]
+    pub fn reset(&mut self) {
+        self.counter = 0;
     }
 }

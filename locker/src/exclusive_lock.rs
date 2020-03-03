@@ -66,6 +66,7 @@ pub unsafe trait RawExclusiveLock {
     unsafe fn exc_unlock(&self);
 
     /// Temporarily yields the lock to a waiting thread if there is one.
+    ///
     /// This method is functionally equivalent to calling `exc_unlock` followed by `exc_lock`,
     /// however it can be much more efficient in the case where there are no waiting threads.
     ///
@@ -125,6 +126,7 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     unsafe fn exc_unlock_fair(&self);
 
     /// Temporarily yields the lock to a waiting thread if there is one.
+    ///
     /// This method is functionally equivalent to calling `exc_unlock_fair` followed by `exc_lock`,
     /// however it can be much more efficient in the case where there are no waiting threads.
     ///
