@@ -2,10 +2,8 @@
 //!
 //! See [`RawExclusiveLock`] for details
 
-#[doc(hidden)]
-pub mod guard;
-#[doc(hidden)]
-pub mod raw;
+mod guard;
+mod raw;
 
 pub use guard::{ExclusiveGuard, MappedExclusiveGuard};
 pub use raw::RawExclusiveGuard;
