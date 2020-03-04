@@ -1,3 +1,7 @@
+//! Generic shared locks
+//!
+//! See [`RawShareLock`] for details
+
 mod guard;
 mod raw;
 

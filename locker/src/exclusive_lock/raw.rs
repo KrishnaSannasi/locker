@@ -9,11 +9,12 @@ use crate::{Inhabitted, RawLockInfo};
 ///
 /// Once this structure is dropped, that *exc lock* will automatically be released by calling
 /// [`RawExclusiveLock::exc_unlock`]. If you want to release the *exc lock* using a fair unlock
-/// protocol, use [`RawExclusiveGuard::unlock_fair`](crate::share_lock::RawExclusiveGuard#method.unlock_fair)
+/// protocol, use [`RawExclusiveGuard::unlock_fair`](crate::exclusive_lock::RawExclusiveGuard#method.unlock_fair)
 pub type RawExclusiveGuard<'a, L> =
     _RawExclusiveGuard<'a, L, <L as RawLockInfo>::ExclusiveGuardTraits>;
 
 #[doc(hidden)]
+#[must_use = "if unused the `RawExclusiveGuard` will immediately unlock"]
 pub struct _RawExclusiveGuard<'a, L: RawExclusiveLock, Tr> {
     lock: &'a L,
     _traits: Tr,
@@ -91,10 +92,12 @@ impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
         f()
     }
 
+    /// The inner lock
     pub fn inner(&self) -> &L {
         self.lock
     }
 
+    /// Consume the guard without releasing the lock
     pub fn into_inner(self) -> &'a L {
         std::mem::ManuallyDrop::new(self).lock
     }

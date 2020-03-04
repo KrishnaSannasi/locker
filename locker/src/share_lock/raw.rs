@@ -11,6 +11,7 @@ use crate::{Inhabitted, RawLockInfo};
 pub type RawShareGuard<'a, L> = _RawShareGuard<'a, L, <L as RawLockInfo>::ShareGuardTraits>;
 
 #[doc(hidden)]
+#[must_use = "if unused the `RawShareGuard` will immediately unlock"]
 pub struct _RawShareGuard<'a, L: RawShareLock, Tr> {
     lock: &'a L,
     _traits: Tr,
@@ -88,10 +89,12 @@ impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {
         f()
     }
 
+    /// The inner lock
     pub fn inner(&self) -> &L {
         self.lock
     }
 
+    /// Consume the guard without releasing the lock
     pub fn into_inner(self) -> &'a L {
         std::mem::ManuallyDrop::new(self).lock
     }

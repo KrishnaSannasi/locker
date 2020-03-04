@@ -1,9 +1,17 @@
+//! Generic exclusive locks
+//!
+//! See [`RawExclusiveLock`] for details
+
+#[doc(hidden)]
 pub mod guard;
 #[doc(hidden)]
 pub mod raw;
 
 pub use guard::{ExclusiveGuard, MappedExclusiveGuard};
 pub use raw::RawExclusiveGuard;
+
+#[cfg(doc)]
+use crate::RawLockInfo;
 
 /// A raw exclusive lock, this implementation is for any lock that can only be locked once
 /// for any time slice.
@@ -140,6 +148,12 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     }
 }
 
+/// Additional methods for RwLocks which support atomically downgrading an exclusive lock to a shared lock.
+///
+/// # Safety
+///
+/// [`RawExclusiveLockDowngrade::downgrade`] must release a *exc lock* and acquire a *shr lock*, and must not let any other thread
+/// acquire a lock in between.
 pub unsafe trait RawExclusiveLockDowngrade:
     RawExclusiveLock + crate::share_lock::RawShareLock
 {

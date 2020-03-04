@@ -31,6 +31,7 @@ cfg_if::cfg_if! {
 }
 
 impl<L, I> ReentrantPanic<L, I> {
+    /// Create a new `ReentrantPanic` with the given inner lock and thread_info
     pub const fn wrap(inner: L, thread_info: I) -> Self {
         Self {
             inner,

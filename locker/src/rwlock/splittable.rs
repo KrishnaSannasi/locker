@@ -620,6 +620,8 @@ fn test_writes() {
 
 #[test]
 fn test_reads() {
+    use crate::exclusive_lock::ExclusiveGuard;
+
     let m = RawLock::rwlock((10, 0));
 
     {
@@ -630,12 +632,12 @@ fn test_reads() {
 
     {
         let _a = m.try_write().unwrap();
-        let (_b, _c) = _a.split_map(|(x, y)| (x, y));
+        let (_b, _c) = ExclusiveGuard::split_map(_a, |(x, y)| (x, y));
     }
 
     {
         let _a = m.try_write().unwrap();
-        let (_b, _c) = _a.split_map(|(x, y)| (x, y));
+        let (_b, _c) = ExclusiveGuard::split_map(_a, |(x, y)| (x, y));
     }
 
     {

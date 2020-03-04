@@ -91,17 +91,20 @@ impl<L: RawLockInfo + RawExclusiveLock + Parkable, T: ?Sized> Wait for Exclusive
 
     #[inline]
     fn wait(&mut self, cv: &Condvar<Self::Lock>) {
-        unsafe { cv.raw.exc_wait(self.raw_mut()) }
+        unsafe { cv.raw.exc_wait(ExclusiveGuard::raw_mut(self)) }
     }
 
     #[inline]
     fn wait_until(&mut self, cv: &Condvar<Self::Lock>, timeout: Instant) -> WaitTimeoutResult {
-        unsafe { cv.raw.exc_wait_until(self.raw_mut(), timeout) }
+        unsafe {
+            cv.raw
+                .exc_wait_until(ExclusiveGuard::raw_mut(self), timeout)
+        }
     }
 
     #[inline]
     fn wait_for(&mut self, cv: &Condvar<Self::Lock>, duration: Duration) -> WaitTimeoutResult {
-        unsafe { cv.raw.exc_wait_for(self.raw_mut(), duration) }
+        unsafe { cv.raw.exc_wait_for(ExclusiveGuard::raw_mut(self), duration) }
     }
 }
 
@@ -110,16 +113,16 @@ impl<L: RawLockInfo + RawShareLock + Parkable, T: ?Sized> Wait for ShareGuard<'_
 
     #[inline]
     fn wait(&mut self, cv: &Condvar<Self::Lock>) {
-        unsafe { cv.raw.shr_wait(self.raw_mut()) }
+        unsafe { cv.raw.shr_wait(ShareGuard::raw_mut(self)) }
     }
 
     #[inline]
     fn wait_until(&mut self, cv: &Condvar<Self::Lock>, timeout: Instant) -> WaitTimeoutResult {
-        unsafe { cv.raw.shr_wait_until(self.raw_mut(), timeout) }
+        unsafe { cv.raw.shr_wait_until(ShareGuard::raw_mut(self), timeout) }
     }
 
     #[inline]
     fn wait_for(&mut self, cv: &Condvar<Self::Lock>, duration: Duration) -> WaitTimeoutResult {
-        unsafe { cv.raw.shr_wait_for(self.raw_mut(), duration) }
+        unsafe { cv.raw.shr_wait_for(ShareGuard::raw_mut(self), duration) }
     }
 }
