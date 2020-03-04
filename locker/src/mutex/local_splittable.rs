@@ -1,13 +1,19 @@
+//! a local (single-threaded) splittable lock
+
 use std::cell::Cell;
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
+/// a local (single-threaded) splittable raw mutex
+pub type RawMutex = crate::mutex::raw::Mutex<LocalSplitLock>;
+/// a local (single-threaded) splittable mutex
+pub type Mutex<T> = crate::mutex::Mutex<LocalSplitLock, T>;
 
-pub struct RawLock {
+/// a local (single-threaded) splittable lock
+pub struct LocalSplitLock {
     lock_count: Cell<usize>,
 }
 
-impl RawLock {
+impl LocalSplitLock {
+    /// create a new local (single-threaded) splittable lock
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -15,24 +21,26 @@ impl RawLock {
         }
     }
 
+    /// create a new local splittable raw mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// create a new local splittable mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 }
 
-unsafe impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for LocalSplitLock {}
+unsafe impl crate::RawLockInfo for LocalSplitLock {
     const INIT: Self = Self::new();
 
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for LocalSplitLock {
     #[inline]
     fn exc_lock(&self) {
         assert!(
@@ -65,7 +73,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     unsafe fn exc_bump(&self) {}
 }
 
-unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::SplittableExclusiveLock for LocalSplitLock {
     #[inline]
     unsafe fn exc_split(&self) {
         let (lock_count, overflow) = self.lock_count.get().overflowing_add(1);

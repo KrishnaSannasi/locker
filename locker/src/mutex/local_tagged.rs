@@ -1,19 +1,28 @@
+//! a local (single-threaded) tagged lock
+
 use std::cell::Cell;
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
+/// a local (single-threaded) tagged raw mutex
+pub type RawMutex = crate::mutex::raw::Mutex<LocalTaggedLock>;
+/// a local (single-threaded) tagged mutex
+pub type Mutex<T> = crate::mutex::Mutex<LocalTaggedLock, T>;
 
-pub struct RawLock {
+/// a local (single-threaded) tagged lock
+pub struct LocalTaggedLock {
     state: Cell<u8>,
 }
 
-impl RawLock {
+impl LocalTaggedLock {
     const LOCK_BIT: u8 = 1;
 
+    /// The number of bits that this mutex can store
+    ///
+    /// This is guaranteed to be exactly 7
     pub const TAG_BITS: u8 = 7;
     const SHIFT: u8 = 8 - Self::TAG_BITS;
     const MASK: u8 = !(!0 << Self::SHIFT);
 
+    /// create a local (single-threaded) tagged lock
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -21,6 +30,7 @@ impl RawLock {
         }
     }
 
+    /// create a local (single-threaded) tagged lock with the given tag
     #[inline]
     pub const fn with_tag(tag: u8) -> Self {
         Self {
@@ -28,10 +38,14 @@ impl RawLock {
         }
     }
 
+    /// Get the tag
     pub fn tag(&self) -> u8 {
         self.state.get() >> Self::SHIFT
     }
 
+    /// perform a bit-wise and with the given tag and the stored tag
+    ///
+    /// returns the old tag
     pub fn and_tag(&self, tag: u8) -> u8 {
         let tag = tag << Self::SHIFT | Self::MASK;
         let state = self.state.get();
@@ -41,6 +55,9 @@ impl RawLock {
         state >> Self::SHIFT
     }
 
+    /// perform a bit-wise or with the given tag and the stored tag
+    ///
+    /// returns the old tag
     pub fn or_tag(&self, tag: u8) -> u8 {
         let tag = tag << Self::SHIFT;
 
@@ -51,6 +68,9 @@ impl RawLock {
         state >> Self::SHIFT
     }
 
+    /// swap the tag with the given tag
+    ///
+    /// returns the old tag
     pub fn replace_tag(&self, tag: u8) -> u8 {
         let state = self.state.get();
 
@@ -58,25 +78,31 @@ impl RawLock {
 
         state >> Self::SHIFT
     }
+    /// set the tag with the given tag
+    pub fn set_tag(&self, tag: u8) {
+        self.replace_tag(tag);
+    }
 
+    /// Create a new raw tagged mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// Create a new tagged mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 }
 
-unsafe impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for LocalTaggedLock {}
+unsafe impl crate::RawLockInfo for LocalTaggedLock {
     const INIT: Self = Self::new();
 
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for LocalTaggedLock {
     #[inline]
     fn exc_lock(&self) {
         assert!(

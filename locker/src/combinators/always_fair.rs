@@ -14,7 +14,7 @@ use crate::rwlock::RawRwLock;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Fair<L: ?Sized>(pub L);
 
-unsafe impl<L: RawMutex + RawExclusiveLockFair> RawMutex for Fair<L> {}
+impl<L: RawMutex + RawExclusiveLockFair> RawMutex for Fair<L> {}
 unsafe impl<L: RawRwLock + RawExclusiveLockFair + RawShareLockFair> RawRwLock for Fair<L> {}
 unsafe impl<L: RawReentrantMutex + RawShareLockFair> RawReentrantMutex for Fair<L> {}
 

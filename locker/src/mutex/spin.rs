@@ -1,39 +1,69 @@
+//! a spin lock
+
 use crate::spin_wait::SpinWait;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
+/// a raw mutex backed by a spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default mutex lock](crate::mutex::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub type RawMutex = crate::mutex::raw::Mutex<SpinLock>;
 
-pub struct RawLock {
+/// a mutex backed by a spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default mutex lock](crate::mutex::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub type Mutex<T> = crate::mutex::Mutex<SpinLock, T>;
+
+/// A spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default mutex lock](crate::mutex::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub struct SpinLock {
     lock: AtomicBool,
 }
 
-impl RawLock {
+impl SpinLock {
+    /// create a new spin lock
     #[inline]
     pub const fn new() -> Self {
-        RawLock {
+        SpinLock {
             lock: AtomicBool::new(false),
         }
     }
 
+    /// create a new spin lock based raw mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// create a new spin lock based mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 }
 
-unsafe impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for SpinLock {}
+unsafe impl crate::RawLockInfo for SpinLock {
     const INIT: Self = Self::new();
 
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for SpinLock {
     #[inline]
     fn exc_lock(&self) {
         let mut spin = SpinWait::new();

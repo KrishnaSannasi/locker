@@ -1,5 +1,5 @@
 use crate::exclusive_lock::RawExclusiveLock;
-use crate::mutex::local_tagged::RawLock as Tagged;
+use crate::mutex::local_tagged::LocalTaggedLock as Tagged;
 
 pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;

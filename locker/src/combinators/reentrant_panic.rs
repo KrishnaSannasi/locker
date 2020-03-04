@@ -41,7 +41,7 @@ impl<L, I> ReentrantPanic<L, I> {
     }
 }
 
-unsafe impl<L: RawMutex, I: ThreadInfo> RawMutex for ReentrantPanic<L, I> {}
+impl<L: RawMutex, I: ThreadInfo> RawMutex for ReentrantPanic<L, I> {}
 unsafe impl<L: RawRwLock, I: ThreadInfo> RawRwLock for ReentrantPanic<L, I> {}
 
 unsafe impl<L: RawLockInfo, I: ThreadInfo> RawLockInfo for ReentrantPanic<L, I> {
@@ -152,7 +152,7 @@ unsafe impl<L: ?Sized + RawShareLockFair, I: ThreadInfo> RawShareLockFair for Re
 #[test]
 #[should_panic = "tried to lock a locked exclusive lock from the same thread!"]
 fn reentrant_panic() {
-    let mtx = crate::mutex::Mutex::<ReentrantPanic<crate::mutex::simple::RawLock>, _>::new(10);
+    let mtx = crate::mutex::Mutex::<ReentrantPanic<crate::mutex::default::DefaultLock>, _>::new(10);
 
     let mut _guard = mtx.lock();
 

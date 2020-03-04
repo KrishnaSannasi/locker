@@ -1,3 +1,4 @@
+use crate::mutex::default::DefaultLock;
 use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
@@ -52,17 +53,11 @@ impl Global {
     }
 }
 
-#[cfg(feature = "parking_lot_core")]
-type Lock = crate::mutex::simple::RawLock;
-
-#[cfg(not(feature = "parking_lot_core"))]
-type Lock = crate::mutex::spin::RawLock;
-
-type ReLock = crate::reentrant::simple::RawReentrantLock<Lock>;
+type ReLock = crate::reentrant::simple::RawReentrantLock<DefaultLock>;
 
 macro_rules! new {
     () => {
-        unsafe { ReLock::from_raw_parts(Lock::new(), super::std_thread::StdThreadInfo) }
+        unsafe { ReLock::from_raw_parts(DefaultLock::new(), super::std_thread::StdThreadInfo) }
     };
 }
 

@@ -36,6 +36,7 @@ pub struct Once<L> {
     lock: L,
 }
 
+#[cfg(feature = "std")]
 impl<L: Finish> std::panic::RefUnwindSafe for Once<L> {}
 
 impl<L: RawLockInfo> Default for Once<L> {

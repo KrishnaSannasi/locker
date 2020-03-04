@@ -1,3 +1,5 @@
+//! an adaptive raw mutex
+
 use crate::exclusive_lock::RawExclusiveLock;
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
 
@@ -12,27 +14,33 @@ const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Instant;
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
+/// an adaptive raw mutex
+pub type RawMutex = crate::mutex::raw::Mutex<AdaptiveLock>;
+/// an adaptive mutex
+pub type Mutex<T> = crate::mutex::Mutex<AdaptiveLock, T>;
 
-pub struct RawLock {
+/// An adaptive mutex lock backed by `parking_lot_core`
+pub struct AdaptiveLock {
     state: AtomicU8,
 }
 
-impl RawLock {
+impl AdaptiveLock {
     const LOCK_BIT: u8 = 0b01;
     const PARK_BIT: u8 = 0b10;
 
+    /// Create a new adaptive mutex lock
     pub const fn new() -> Self {
-        RawLock {
+        AdaptiveLock {
             state: AtomicU8::new(0),
         }
     }
 
+    /// Create a new raw mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// Create a new mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
@@ -164,14 +172,14 @@ impl RawLock {
     }
 }
 
-unsafe impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for AdaptiveLock {}
+unsafe impl crate::RawLockInfo for AdaptiveLock {
     const INIT: Self = Self::new();
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl RawExclusiveLock for RawLock {
+unsafe impl RawExclusiveLock for AdaptiveLock {
     #[inline]
     fn exc_lock(&self) {
         if !self.exc_try_lock() {
@@ -214,7 +222,7 @@ unsafe impl RawExclusiveLock for RawLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLockFair for AdaptiveLock {
     #[inline]
     unsafe fn exc_unlock_fair(&self) {
         if self
@@ -234,7 +242,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
     }
 }
 
-unsafe impl crate::condvar::Parkable for RawLock {
+unsafe impl crate::condvar::Parkable for AdaptiveLock {
     fn mark_parked_if_locked(&self) -> bool {
         let mut state = self.state.load(Ordering::Relaxed);
         loop {

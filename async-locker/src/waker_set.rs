@@ -10,9 +10,9 @@ use std::task::{Context, Waker};
 
 pub use crate::slab::Index;
 use crate::slab::Slab;
-use locker::mutex::tagged_spin::RawLock;
+use locker::mutex::tagged_default::TaggedDefaultLock;
 
-type Mutex<T> = locker::mutex::Mutex<RawLock, T>;
+type Mutex<T> = locker::mutex::Mutex<TaggedDefaultLock, T>;
 
 /// Set when there is at least one entry that has already been notified.
 const NOTIFIED: u8 = 0b01;
@@ -46,7 +46,7 @@ impl WakerSet {
     #[inline]
     pub const fn new() -> WakerSet {
         WakerSet {
-            inner: RawLock::mutex(Inner {
+            inner: TaggedDefaultLock::mutex(Inner {
                 entries: Slab::new(),
                 notifiable: 0,
             }),
@@ -181,7 +181,7 @@ impl WakerSet {
 
 /// A guard holding a `WakerSet` locked.
 struct Lock<'a> {
-    waker_set: locker::exclusive_lock::ExclusiveGuard<'a, RawLock, Inner>,
+    waker_set: locker::exclusive_lock::ExclusiveGuard<'a, TaggedDefaultLock, Inner>,
 }
 
 impl Drop for Lock<'_> {
@@ -199,8 +199,7 @@ impl Drop for Lock<'_> {
             flag |= NOTIFIABLE;
         }
 
-        self.waker_set
-            .raw()
+        locker::exclusive_lock::ExclusiveGuard::raw(&self.waker_set)
             .inner()
             .swap_tag(flag, Ordering::Relaxed);
     }

@@ -1,3 +1,5 @@
+//! a splittable lock
+
 use crate::exclusive_lock::RawExclusiveLock;
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
 
@@ -12,30 +14,67 @@ const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
+/// a splittable raw mutex
+///
+/// This lock can maintain multiple exclusive locks at the same time, thus allowing
+/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
+pub type RawMutex = crate::mutex::raw::Mutex<SplitLock>;
 
-pub struct RawLock {
+/// a splittable mutex
+///
+/// This lock can maintain multiple exclusive locks at the same time, thus allowing
+/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
+pub type Mutex<T> = crate::mutex::Mutex<SplitLock, T>;
+
+const PARK_BIT: usize = 0b1;
+const INC: usize = 0b10;
+
+/// a splittable lock
+///
+/// This lock can maintain multiple exclusive locks at the same time, thus allowing
+/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
+pub struct SplitLock {
     state: AtomicUsize,
 }
 
-impl RawLock {
-    const LOCK_INC: usize = 0b10;
-    const LOCK_BITS: usize = !Self::PARK_BIT;
-    const PARK_BIT: usize = 0b01;
-
+impl SplitLock {
+    /// create a new splittable lock
     pub const fn new() -> Self {
-        RawLock {
+        SplitLock {
             state: AtomicUsize::new(0),
         }
     }
 
+    /// create a new splittable raw mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// create a new splittable mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
+    }
+}
+
+impl SplitLock {
+    #[inline]
+    fn unlock_fast(&self) -> bool {
+        let mut state = self.state.load(Ordering::Relaxed);
+
+        while state > INC || state & PARK_BIT != 0 {
+            if let Err(x) = self.state.compare_exchange_weak(
+                state,
+                state - INC,
+                Ordering::Release,
+                Ordering::Relaxed,
+            ) {
+                state = x;
+            } else {
+                return true;
+            }
+        }
+
+        false
     }
 
     #[cold]
@@ -45,33 +84,30 @@ impl RawLock {
         let mut state = self.state.load(Ordering::Relaxed);
         loop {
             // Grab the lock if it isn't locked, even if there is a queue on it
-            if state & Self::LOCK_BITS == 0 {
-                if let Some(new_state) = state.checked_add(Self::LOCK_INC) {
-                    match self.state.compare_exchange_weak(
-                        state,
-                        new_state,
-                        Ordering::Acquire,
-                        Ordering::Relaxed,
-                    ) {
-                        Ok(_) => return true,
-                        Err(x) => state = x,
-                    }
-
-                    continue;
+            if state < INC {
+                match self.state.compare_exchange_weak(
+                    state,
+                    state | INC,
+                    Ordering::Acquire,
+                    Ordering::Relaxed,
+                ) {
+                    Ok(_) => return true,
+                    Err(x) => state = x,
                 }
+                continue;
             }
 
             // If there is no queue, try spinning a few times
-            if state & Self::PARK_BIT == 0 && spinwait.spin() {
+            if state & PARK_BIT == 0 && spinwait.spin() {
                 state = self.state.load(Ordering::Relaxed);
                 continue;
             }
 
             // Set the parked bit
-            if state & Self::PARK_BIT == 0 {
+            if state & PARK_BIT == 0 {
                 if let Err(x) = self.state.compare_exchange_weak(
                     state,
-                    state | Self::PARK_BIT,
+                    state | PARK_BIT,
                     Ordering::Relaxed,
                     Ordering::Relaxed,
                 ) {
@@ -82,16 +118,13 @@ impl RawLock {
 
             // Park our thread until we are woken up by an unlock
             let addr = self as *const _ as usize;
-            let validate = || {
-                // check if locked and parked bit is set
-
-                self.state.load(Ordering::Relaxed) != 0
-            };
+            // check if locked and parked bit is set
+            let validate = || self.state.load(Ordering::Relaxed) != 0;
             let before_sleep = || {};
             let timed_out = |_, was_last_thread| {
                 // Clear the parked bit if we were the last parked thread
                 if was_last_thread {
-                    self.state.fetch_and(!Self::PARK_BIT, Ordering::Relaxed);
+                    self.state.fetch_and(!PARK_BIT, Ordering::Relaxed);
                 }
             };
 
@@ -142,7 +175,7 @@ impl RawLock {
                 // Clear the parked bit if there are no more parked
                 // threads.
                 if !result.have_more_threads {
-                    self.state.fetch_and(!Self::PARK_BIT, Ordering::Relaxed);
+                    self.state.store(INC, Ordering::Relaxed);
                 }
                 return TOKEN_HANDOFF;
             }
@@ -150,7 +183,7 @@ impl RawLock {
             // Clear the locked bit, and the parked bit as well if there
             // are no more parked threads.
             if result.have_more_threads {
-                self.state.store(Self::PARK_BIT, Ordering::Release);
+                self.state.store(PARK_BIT, Ordering::Release);
             } else {
                 self.state.store(0, Ordering::Release);
             }
@@ -172,14 +205,14 @@ impl RawLock {
     }
 }
 
-unsafe impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for SplitLock {}
+unsafe impl crate::RawLockInfo for SplitLock {
     const INIT: Self = Self::new();
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }
 
-unsafe impl RawExclusiveLock for RawLock {
+unsafe impl RawExclusiveLock for SplitLock {
     #[inline]
     fn exc_lock(&self) {
         if !self.exc_try_lock() {
@@ -190,104 +223,47 @@ unsafe impl RawExclusiveLock for RawLock {
     #[inline]
     fn exc_try_lock(&self) -> bool {
         let state = self.state.load(Ordering::Acquire);
+        let state = state & PARK_BIT;
 
-        (state & Self::LOCK_BITS) == 0
-            && self
+        state
+            == self
                 .state
-                .compare_exchange_weak(
-                    state & Self::PARK_BIT,
-                    state | Self::LOCK_INC,
-                    Ordering::Acquire,
-                    Ordering::Relaxed,
-                )
-                .is_ok()
+                .compare_and_swap(state, state | INC, Ordering::Acquire)
     }
 
     #[inline]
     unsafe fn exc_unlock(&self) {
-        let state = self.state.load(Ordering::Relaxed) & Self::LOCK_BITS;
-
-        debug_assert_ne!(state, 0, "exc_unlock was called with an unlocked mutex");
-
-        if self
-            .state
-            .compare_exchange(
-                state,
-                state - Self::LOCK_INC,
-                Ordering::Release,
-                Ordering::Relaxed,
-            )
-            .is_err()
-        {
-            self.unlock_slow(false);
+        if !self.unlock_fast() {
+            self.unlock_slow(false)
         }
     }
 
     #[inline]
     unsafe fn exc_bump(&self) {
-        if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
+        if self.state.load(Ordering::Relaxed) == INC | PARK_BIT {
             self.bump_slow(false)
         }
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockFair for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLockFair for SplitLock {
     #[inline]
     unsafe fn exc_unlock_fair(&self) {
-        let state = self.state.load(Ordering::Relaxed) & Self::LOCK_BITS;
-
-        debug_assert_ne!(state, 0, "exc_unlock was called with an unlocked mutex");
-
-        if self
-            .state
-            .compare_exchange(
-                state,
-                state - Self::LOCK_INC,
-                Ordering::Release,
-                Ordering::Relaxed,
-            )
-            .is_err()
-        {
-            self.unlock_slow(true);
+        if !self.unlock_fast() {
+            self.unlock_slow(true)
         }
     }
 
     #[inline]
     unsafe fn exc_bump_fair(&self) {
-        if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
+        if self.state.load(Ordering::Relaxed) == INC | PARK_BIT {
             self.bump_slow(true)
         }
     }
 }
 
-unsafe impl crate::exclusive_lock::SplittableExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::SplittableExclusiveLock for SplitLock {
     unsafe fn exc_split(&self) {
-        self.state.fetch_and(Self::LOCK_INC, Ordering::Relaxed);
-    }
-}
-
-// TODO: fix performace bug
-unsafe impl crate::condvar::Parkable for RawLock {
-    fn mark_parked_if_locked(&self) -> bool {
-        let mut state = self.state.load(Ordering::Relaxed);
-        loop {
-            if state & Self::LOCK_BITS == 0 {
-                return false;
-            }
-
-            match self.state.compare_exchange_weak(
-                state,
-                state | Self::PARK_BIT,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => return true,
-                Err(x) => state = x,
-            }
-        }
-    }
-
-    fn mark_parked(&self) {
-        self.state.fetch_or(Self::PARK_BIT, Ordering::Relaxed);
+        self.state.fetch_add(INC, Ordering::Relaxed);
     }
 }

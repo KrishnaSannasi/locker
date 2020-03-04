@@ -39,7 +39,7 @@ impl RawLock {
     }
 }
 
-unsafe impl crate::mutex::RawMutex for RawLock {}
+impl crate::mutex::RawMutex for RawLock {}
 unsafe impl crate::rwlock::RawRwLock for RawLock {}
 unsafe impl crate::RawLockInfo for RawLock {
     #[allow(clippy::declare_interior_mutable_const)]

@@ -113,7 +113,7 @@ static GLOBAL: [Lock; 61] = [
     Lock::new(),
 ];
 
-unsafe impl crate::mutex::RawMutex for Global {}
+impl crate::mutex::RawMutex for Global {}
 unsafe impl crate::rwlock::RawRwLock for Global {}
 unsafe impl RawLockInfo for Global {
     const INIT: Self = Self;
