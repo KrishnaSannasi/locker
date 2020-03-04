@@ -69,7 +69,7 @@ impl<L: RawMutex> Mutex<L> {
 
 impl<L: RawMutex> Mutex<L>
 where
-    L::ExclusiveGuardTraits: locker::Inhabitted,
+    L::ExclusiveGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
     pub async fn lock(&self) -> RawExclusiveGuard<'_, L> {
@@ -82,7 +82,7 @@ where
 
         impl<'a, L: RawMutex> std::future::Future for LockFuture<'a, L>
         where
-            L::ExclusiveGuardTraits: locker::Inhabitted,
+            L::ExclusiveGuardTraits: locker::marker::Inhabitted,
         {
             type Output = RawExclusiveGuard<'a, L>;
 

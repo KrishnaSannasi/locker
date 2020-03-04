@@ -93,7 +93,7 @@ impl<L: RawMutex, T> Mutex<L, T> {
 
 impl<L: RawMutex, T: ?Sized> Mutex<L, T>
 where
-    L::ExclusiveGuardTraits: locker::Inhabitted,
+    L::ExclusiveGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
     pub async fn lock(&self) -> ExclusiveGuard<'_, L, T> {

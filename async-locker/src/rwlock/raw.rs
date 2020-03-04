@@ -70,8 +70,8 @@ impl<L: RawRwLock> RwLock<L> {
 
 impl<L: RawRwLock> RwLock<L>
 where
-    L::ExclusiveGuardTraits: locker::Inhabitted,
-    L::ShareGuardTraits: locker::Inhabitted,
+    L::ExclusiveGuardTraits: locker::marker::Inhabitted,
+    L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
     pub async fn write(&self) -> RawExclusiveGuard<'_, L> {
@@ -84,8 +84,8 @@ where
 
         impl<'a, L: RawRwLock> std::future::Future for LockFuture<'a, L>
         where
-            L::ExclusiveGuardTraits: locker::Inhabitted,
-            L::ShareGuardTraits: locker::Inhabitted,
+            L::ExclusiveGuardTraits: locker::marker::Inhabitted,
+            L::ShareGuardTraits: locker::marker::Inhabitted,
         {
             type Output = RawExclusiveGuard<'a, L>;
 
@@ -136,8 +136,8 @@ where
 
         impl<'a, L: RawRwLock> std::future::Future for LockFuture<'a, L>
         where
-            L::ExclusiveGuardTraits: locker::Inhabitted,
-            L::ShareGuardTraits: locker::Inhabitted,
+            L::ExclusiveGuardTraits: locker::marker::Inhabitted,
+            L::ShareGuardTraits: locker::marker::Inhabitted,
         {
             type Output = RawShareGuard<'a, L>;
 

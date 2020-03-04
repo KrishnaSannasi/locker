@@ -101,7 +101,7 @@ impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
 
 impl<L: RawReentrantMutex, T: ?Sized> ReentrantMutex<L, T>
 where
-    L::ShareGuardTraits: locker::Inhabitted,
+    L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
     pub async fn lock(&self) -> ShareGuard<'_, L, T> {

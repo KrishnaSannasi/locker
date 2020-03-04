@@ -106,8 +106,8 @@ impl<L: RawRwLock, T> RwLock<L, T> {
 
 impl<L: RawRwLock, T: ?Sized> RwLock<L, T>
 where
-    L::ExclusiveGuardTraits: locker::Inhabitted,
-    L::ShareGuardTraits: locker::Inhabitted,
+    L::ExclusiveGuardTraits: locker::marker::Inhabitted,
+    L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
     pub async fn write(&self) -> ExclusiveGuard<'_, L, T> {

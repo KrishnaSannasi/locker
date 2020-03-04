@@ -70,7 +70,7 @@ impl<L: RawReentrantMutex> ReentrantMutex<L> {
 
 impl<L: RawReentrantMutex> ReentrantMutex<L>
 where
-    L::ShareGuardTraits: locker::Inhabitted,
+    L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
     pub async fn lock(&self) -> RawShareGuard<'_, L> {
@@ -83,7 +83,7 @@ where
 
         impl<'a, L: RawReentrantMutex> std::future::Future for LockFuture<'a, L>
         where
-            L::ShareGuardTraits: locker::Inhabitted,
+            L::ShareGuardTraits: locker::marker::Inhabitted,
         {
             type Output = RawShareGuard<'a, L>;
 

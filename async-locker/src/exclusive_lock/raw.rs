@@ -57,7 +57,7 @@ impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
 
 impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo> RawExclusiveGuard<'a, L>
 where
-    L::ShareGuardTraits: locker::Inhabitted,
+    L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     pub fn downgrade(self) -> crate::share_lock::RawShareGuard<'a, L> {
         let g = std::mem::ManuallyDrop::new(self);
