@@ -368,6 +368,8 @@ impl AdaptiveLock {
         let callback = |_| {
             let count = count.get();
             let state = self.state.fetch_add(count, Ordering::Acquire);
+            self.state
+                .fetch_and(!(EXC_BIT | EXC_PARK_BIT), Ordering::Relaxed);
             debug_assert!(state.checked_add(count).is_some());
             TOKEN_HANDOFF_SHARED
         };
@@ -379,18 +381,15 @@ impl AdaptiveLock {
 
     #[cold]
     fn upgrade_slow(&self, timeout: Option<Instant>) -> bool {
-        let mut state = self.state.load(Ordering::Relaxed);
+        self.state.fetch_or(EXC_BIT, Ordering::Acquire);
 
-        while let Err(x) = self.state.compare_exchange_weak(
-            state,
-            (state - INC) | EXC_BIT,
-            Ordering::Acquire,
-            Ordering::Relaxed,
-        ) {
-            state = x;
+        let has_upgraded = self.wait_for_shared(1, timeout);
+
+        if has_upgraded {
+            self.state.fetch_sub(INC, Ordering::Relaxed);
         }
 
-        self.wait_for_shared(timeout)
+        has_upgraded
     }
 
     #[cold]
@@ -481,11 +480,11 @@ impl AdaptiveLock {
     }
 
     #[inline]
-    fn wait_for_shared(&self, timeout: Option<Instant>) -> bool {
+    fn wait_for_shared(&self, wait_count: usize, timeout: Option<Instant>) -> bool {
         let mut state = self.state.fetch_or(EXC_BIT, Ordering::Acquire);
         let mut wait = SpinWait::new();
 
-        while state & READERS != 0 {
+        while state & READERS > wait_count * INC {
             if wait.spin() {
                 state = self.state.load(Ordering::Relaxed);
                 continue;
@@ -540,9 +539,6 @@ impl AdaptiveLock {
 
                 // Timeout expired
                 ParkResult::TimedOut => {
-                    self.state
-                        .fetch_and(!(EXC_BIT | EXC_PARK_BIT), Ordering::Relaxed);
-
                     self.unpark_shared();
 
                     return false;
@@ -576,7 +572,7 @@ impl AdaptiveLock {
         let exclusive = || true;
         let shared = || {
             if self.state.fetch_sub(INC, Ordering::Relaxed) & PARK_BIT != 0 {
-                self.wait_for_shared(timeout)
+                self.wait_for_shared(0, timeout)
             } else {
                 true
             }
@@ -801,7 +797,7 @@ mod tests {
             move || {
                 assert_eq!(SEQUENCE.load(Ordering::Relaxed), 0);
                 wait.wait();
-                LOCK.inner().wait_for_shared(None);
+                LOCK.inner().wait_for_shared(0, None);
                 assert_eq!(SEQUENCE.fetch_add(1, Ordering::Relaxed), 1);
             }
         });
