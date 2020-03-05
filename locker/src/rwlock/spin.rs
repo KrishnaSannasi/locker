@@ -1,18 +1,64 @@
+//! a spin lock
+
 use crate::spin_wait::SpinWait;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
-pub type RawRwLock = crate::rwlock::raw::RwLock<RawLock>;
-pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
+const EXC_LOCK: usize = !0;
 
-pub struct RawLock {
+/// a raw mutex backed by a spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default rwlock lock](crate::rwlock::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub type RawMutex = crate::mutex::raw::Mutex<SpinLock>;
+
+/// a mutex backed by a spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default rwlock lock](crate::rwlock::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub type Mutex<T> = crate::mutex::Mutex<SpinLock, T>;
+
+/// a raw rwlock backed by a spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default rwlock lock](crate::rwlock::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub type RawRwLock = crate::rwlock::raw::RwLock<SpinLock>;
+
+/// a rwlock backed by a spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the default rwlock lock](crate::rwlock::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub type RwLock<T> = crate::rwlock::RwLock<SpinLock, T>;
+
+/// A spin lock
+///
+/// It is not reccomended to use this type in libraries,
+/// instead use [the defaultrwlock lock](crate::rwlock::default)
+/// because if any other crate in the dependency tree turns on
+/// `parking_lot_core`, then you will automatically get adaptive strategys,
+/// which are more efficient in the general case. All this without sacrificing
+/// platforms that can't support adaptive strategys.
+pub struct SpinLock {
     state: AtomicUsize,
 }
 
-impl RawLock {
-    const EXC_LOCK: usize = usize::max_value();
-
+impl SpinLock {
+    /// create a new spin lock
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -20,18 +66,22 @@ impl RawLock {
         }
     }
 
+    /// create a new spin lock based raw mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// create a new spin lock based mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
+    /// create a new spin lock based raw rwlock
     pub const fn raw_rwlock() -> RawRwLock {
         unsafe { RawRwLock::from_raw(Self::new()) }
     }
 
+    /// create a new spin lock based rwlock
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
         RwLock::from_raw_parts(Self::raw_rwlock(), value)
     }
@@ -43,7 +93,7 @@ impl RawLock {
         loop {
             if self
                 .state
-                .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
+                .compare_exchange_weak(0, EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
             {
                 break;
@@ -60,7 +110,7 @@ impl RawLock {
         loop {
             if self
                 .state
-                .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
+                .compare_exchange_weak(0, EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
             {
                 break;
@@ -71,9 +121,9 @@ impl RawLock {
     }
 }
 
-impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::rwlock::RawRwLock for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for SpinLock {}
+unsafe impl crate::rwlock::RawRwLock for SpinLock {}
+unsafe impl crate::RawLockInfo for SpinLock {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self::new();
 
@@ -81,7 +131,7 @@ unsafe impl crate::RawLockInfo for RawLock {
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for SpinLock {
     #[inline]
     fn exc_lock(&self) {
         if !self.exc_try_lock() {
@@ -92,7 +142,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
     fn exc_try_lock(&self) -> bool {
         self.state
-            .compare_exchange(0, Self::EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
+            .compare_exchange(0, EXC_LOCK, Ordering::Acquire, Ordering::Relaxed)
             .is_ok()
     }
 
@@ -107,14 +157,14 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for SpinLock {
     #[inline]
     unsafe fn downgrade(&self) {
         self.state.store(1, Ordering::Relaxed);
     }
 }
 
-unsafe impl crate::share_lock::RawShareLock for RawLock {
+unsafe impl crate::share_lock::RawShareLock for SpinLock {
     #[inline]
     fn shr_lock(&self) {
         if !self.shr_try_lock() {

@@ -24,7 +24,7 @@ impl<L> Mutex<L> {
     ///
     /// # Safety
     ///
-    /// You must pass `RawUniueLock::INIT` as lock
+    /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
     pub const unsafe fn from_raw(lock: L) -> Self {
         Self { lock }
@@ -96,7 +96,7 @@ where
     /// An RAII guard is returned to allow scoped unlock of the lock. When the guard
     /// goes out of scope, the mutex will be unlocked.
     ///
-    /// Attempts to lock a mutex in the thread which already holds the lock will result in a deadlock or panic.
+    /// Attempts to lock a `Mutex` in the thread which already holds the lock will result in a deadlock or panic.
     ///
     /// # Panic
     ///

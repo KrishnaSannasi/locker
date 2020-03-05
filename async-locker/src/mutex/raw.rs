@@ -17,7 +17,7 @@ impl<L: RawMutex> Default for Mutex<L> {
 impl<L> Mutex<L> {
     /// # Safety
     ///
-    /// You must pass `RawUniueLock::INIT` as lock
+    /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
     pub const fn from_raw_mutex(raw: raw::Mutex<L>) -> Self {
         Self {

@@ -1,5 +1,5 @@
 #![deny(missing_docs)]
-#![cfg_attr(not(any(feature = "std", feature = "parking_lot_core")), no_std)]
+#![cfg_attr(not(any(test, feature = "std", feature = "parking_lot_core")), no_std)]
 #![cfg_attr(
     feature = "nightly",
     feature(
@@ -17,15 +17,15 @@
 //! integrated together more seemlessly and without too much code duplication.
 //!
 
-#[cfg(not(any(feature = "std", feature = "parking_lot_core")))]
+#[cfg(not(any(test, feature = "std", feature = "parking_lot_core")))]
 extern crate core as std;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(feature = "alloc", not(test), not(feature = "std")))]
 extern crate alloc;
 
 mod alloc_prelude {
     cfg_if::cfg_if! {
-        if #[cfg(feature="std")] {
+        if #[cfg(any(test, feature="std"))] {
             pub use std::boxed::Box;
             pub use std::sync::Arc;
             pub use std::rc::Rc;
@@ -72,13 +72,11 @@ pub unsafe trait RawLockInfo {
 pub mod combinators;
 mod defer;
 pub mod exclusive_lock;
-// #[allow(missing_docs)]
 pub mod mutex; // 110
 #[allow(missing_docs)]
 pub mod once; // 68
 #[allow(missing_docs)]
 pub mod reentrant; // 38
-#[allow(missing_docs)]
 pub mod rwlock; // 99
 pub mod share_lock;
 mod spin_wait;

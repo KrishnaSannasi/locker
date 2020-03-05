@@ -1,6 +1,6 @@
 //! an adaptive raw rwlock
 
-use crate::exclusive_lock::RawExclusiveLock;
+use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockDowngrade};
 use crate::share_lock::RawShareLock;
 
 use parking_lot_core::{self, ParkResult, ParkToken, SpinWait, UnparkResult, UnparkToken};
@@ -9,7 +9,7 @@ const PARK_BIT: usize = 0b0001;
 const EXC_PARK_BIT: usize = 0b0010;
 const EXC_BIT: usize = 0b0100;
 const INC: usize = 0b1000;
-const COUNT: usize = !(PARK_BIT | EXC_PARK_BIT | EXC_BIT);
+const READERS: usize = !(PARK_BIT | EXC_PARK_BIT | EXC_BIT);
 
 // UnparkToken used to indicate that that the target thread should attempt to
 // lock the mutex again as soon as it is unparked.
@@ -34,39 +34,21 @@ const TOKEN_SHARED: ParkToken = ParkToken(2);
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
-/// a splittable raw mutex
-///
-/// This lock can maintain multiple exclusive locks at the same time, thus allowing
-/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
-pub type RawMutex = crate::mutex::raw::Mutex<SplitLock>;
+/// an adaptive raw mutex
+pub type RawMutex = crate::mutex::raw::Mutex<AdaptiveLock>;
+/// an adaptive mutex
+pub type Mutex<T> = crate::mutex::Mutex<AdaptiveLock, T>;
+/// an adaptive raw rwlock
+pub type RawRwLock = crate::rwlock::raw::RwLock<AdaptiveLock>;
+/// an adaptive rwlock
+pub type RwLock<T> = crate::rwlock::RwLock<AdaptiveLock, T>;
 
-/// a splittable mutex
-///
-/// This lock can maintain multiple exclusive locks at the same time, thus allowing
-/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
-pub type Mutex<T> = crate::mutex::Mutex<SplitLock, T>;
-
-/// a splittable raw rwlock
-///
-/// This lock can maintain multiple exclusive locks at the same time, thus allowing
-/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
-pub type RawRwLock = crate::rwlock::raw::RwLock<SplitLock>;
-
-/// a splittable rwlock
-///
-/// This lock can maintain multiple exclusive locks at the same time, thus allowing
-/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
-pub type RwLock<T> = crate::rwlock::RwLock<SplitLock, T>;
-
-/// a splittable lock
-///
-/// This lock can maintain multiple exclusive locks at the same time, thus allowing
-/// you to call `ExclusiveGuard::split_map` and `ExclusiveGuard::try_split_map`
-pub struct SplitLock {
+/// An adaptive rwlock lock backed by `parking_lot_core`
+pub struct AdaptiveLock {
     state: AtomicUsize,
 }
 
-impl SplitLock {
+impl AdaptiveLock {
     /// Create a new adaptive rwlock lock
     #[inline]
     pub const fn new() -> Self {
@@ -96,9 +78,9 @@ impl SplitLock {
     }
 }
 
-impl crate::mutex::RawMutex for SplitLock {}
-unsafe impl crate::rwlock::RawRwLock for SplitLock {}
-unsafe impl crate::RawLockInfo for SplitLock {
+impl crate::mutex::RawMutex for AdaptiveLock {}
+unsafe impl crate::rwlock::RawRwLock for AdaptiveLock {}
+unsafe impl crate::RawLockInfo for AdaptiveLock {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self::new();
 
@@ -106,7 +88,7 @@ unsafe impl crate::RawLockInfo for SplitLock {
     type ShareGuardTraits = ();
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for SplitLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for AdaptiveLock {
     #[inline]
     fn exc_lock(&self) {
         if !self.exc_try_lock() {
@@ -116,23 +98,18 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for SplitLock {
 
     #[inline]
     fn exc_try_lock(&self) -> bool {
-        let state = self.state.load(Ordering::Relaxed);
-
-        state & !PARK_BIT == 0
-            && self
-                .state
-                .compare_exchange(
-                    state,
-                    state | EXC_BIT | INC,
-                    Ordering::Acquire,
-                    Ordering::Relaxed,
-                )
-                .is_ok()
+        self.state
+            .compare_exchange(0, EXC_BIT, Ordering::Acquire, Ordering::Relaxed)
+            .is_ok()
     }
 
     #[inline]
     unsafe fn exc_unlock(&self) {
-        if !self.unlock_fast() {
+        if self
+            .state
+            .compare_exchange(EXC_BIT, 0, Ordering::Release, Ordering::Relaxed)
+            .is_err()
+        {
             self.exc_unlock_slow(false);
         }
     }
@@ -145,10 +122,14 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for SplitLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockFair for SplitLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLockFair for AdaptiveLock {
     #[inline]
     unsafe fn exc_unlock_fair(&self) {
-        if !self.unlock_fast() {
+        if self
+            .state
+            .compare_exchange(EXC_BIT, 0, Ordering::Release, Ordering::Relaxed)
+            .is_err()
+        {
             self.exc_unlock_slow(true);
         }
     }
@@ -161,7 +142,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for SplitLock {
     }
 }
 
-unsafe impl RawShareLock for SplitLock {
+unsafe impl RawShareLock for AdaptiveLock {
     #[inline]
     fn shr_lock(&self) {
         if !self.shr_try_lock() {
@@ -184,14 +165,13 @@ unsafe impl RawShareLock for SplitLock {
 
     #[inline]
     unsafe fn shr_split(&self) {
-        self.state.fetch_add(INC, Ordering::Relaxed);
+        let was_locked = self.shr_try_lock();
+        assert!(was_locked, "Tried to create too many shared locks!");
     }
 
     #[inline]
     unsafe fn shr_unlock(&self) {
-        if !self.unlock_fast() {
-            self.shr_unlock_slow(false);
-        }
+        self.shr_unlock_inner(false)
     }
 
     #[inline]
@@ -202,12 +182,10 @@ unsafe impl RawShareLock for SplitLock {
     }
 }
 
-unsafe impl crate::share_lock::RawShareLockFair for SplitLock {
+unsafe impl crate::share_lock::RawShareLockFair for AdaptiveLock {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
-        if !self.unlock_fast() {
-            self.shr_unlock_slow(true);
-        }
+        self.shr_unlock_inner(true)
     }
 
     #[inline]
@@ -218,13 +196,26 @@ unsafe impl crate::share_lock::RawShareLockFair for SplitLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::SplittableExclusiveLock for SplitLock {
-    unsafe fn exc_split(&self) {
-        self.state.fetch_add(INC, Ordering::Relaxed);
+unsafe impl RawExclusiveLockDowngrade for AdaptiveLock {
+    unsafe fn downgrade(&self) {
+        let mut state = self.state.load(Ordering::Relaxed);
+
+        while let Err(x) = self.state.compare_exchange_weak(
+            state,
+            (state & PARK_BIT) | INC,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            state = x;
+        }
+
+        if state & PARK_BIT != 0 {
+            self.unpark_shared();
+        }
     }
 }
 
-impl SplitLock {
+impl AdaptiveLock {
     #[cold]
     fn exc_bump_slow(&self, force_fair: bool) {
         self.exc_unlock_slow(force_fair);
@@ -237,12 +228,13 @@ impl SplitLock {
         self.shr_lock();
     }
 
-    fn unlock_fast(&self) -> bool {
+    #[inline]
+    fn shr_unlock_inner(&self, force_fair: bool) {
         let mut state = self.state.load(Ordering::Relaxed);
 
         debug_assert!(state >= INC);
 
-        while state & COUNT >= 2 * INC {
+        while state & READERS >= 2 * INC {
             if let Err(x) = self.state.compare_exchange_weak(
                 state,
                 state - INC,
@@ -251,11 +243,11 @@ impl SplitLock {
             ) {
                 state = x;
             } else {
-                return true;
+                return;
             }
         }
 
-        false
+        self.shr_unlock_slow(force_fair);
     }
 
     #[cold]
@@ -381,12 +373,12 @@ impl SplitLock {
         }
     }
 
-    #[cold]
+    #[inline]
     fn wait_for_shared(&self, timeout: Option<Instant>) -> bool {
         let mut state = self.state.fetch_or(EXC_BIT, Ordering::Acquire);
         let mut wait = SpinWait::new();
 
-        while state & COUNT != 0 {
+        while state & READERS != 0 {
             if wait.spin() {
                 state = self.state.load(Ordering::Relaxed);
                 continue;
@@ -410,7 +402,7 @@ impl SplitLock {
             let addr = self as *const _ as usize + 1;
             let validate = || {
                 let state = self.state.load(Ordering::Relaxed);
-                state & COUNT != 0 && state & EXC_PARK_BIT != 0
+                state & READERS != 0 && state & EXC_PARK_BIT != 0
             };
             let before_sleep = || {};
             let timed_out = |_, _| {};
@@ -451,8 +443,6 @@ impl SplitLock {
             }
         }
 
-        self.state.fetch_or(INC, Ordering::Relaxed);
-
         true
     }
 
@@ -460,14 +450,14 @@ impl SplitLock {
     #[inline(never)]
     fn exc_lock_slow(&self, timeout: Option<Instant>) -> bool {
         let try_lock = |state: &mut usize| loop {
-            if *state & COUNT != 0 {
+            if *state & EXC_BIT != 0 {
                 return false;
             }
 
             // Grab EXC_BIT if it isn't set, even if there are parked threads.
             match self.state.compare_exchange_weak(
                 *state,
-                *state | EXC_BIT | INC,
+                *state | EXC_BIT,
                 Ordering::Acquire,
                 Ordering::Relaxed,
             ) {
@@ -478,7 +468,7 @@ impl SplitLock {
 
         let exclusive = || true;
         let shared = || {
-            if self.state.load(Ordering::Relaxed) & PARK_BIT != 0 {
+            if self.state.fetch_sub(INC, Ordering::Relaxed) & PARK_BIT != 0 {
                 self.wait_for_shared(timeout)
             } else {
                 true
@@ -526,22 +516,8 @@ impl SplitLock {
             }
         };
 
-        let exclusive = || {
-            let mut state = self.state.load(Ordering::Relaxed);
-
-            while let Err(x) = self.state.compare_exchange_weak(
-                state,
-                (state & PARK_BIT) | INC,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                state = x;
-            }
-
-            if state & PARK_BIT != 0 {
-                self.unpark_shared();
-            }
-
+        let exclusive = || unsafe {
+            self.downgrade();
             true
         };
         let shared = || true;
@@ -644,14 +620,72 @@ mod tests {
     use crossbeam_utils::sync::WaitGroup;
 
     #[test]
-    fn wait_for_shared() {
+    fn downgrade() {
         static SEQUENCE: AtomicUsize = AtomicUsize::new(0);
-        static LOCK: RawRwLock = SplitLock::raw_rwlock();
+        static LOCK: RawRwLock = AdaptiveLock::raw_rwlock();
 
         let wait = WaitGroup::new();
 
-        LOCK.inner().state.store(0, Ordering::Release);
-        SEQUENCE.store(0, Ordering::Release);
+        let lock = LOCK.write();
+
+        let t = std::thread::spawn({
+            let wait = wait.clone();
+            || {
+                assert_eq!(SEQUENCE.load(Ordering::Relaxed), 0);
+                wait.wait();
+                let a = LOCK.read();
+                let seq = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+                assert!(seq == 1 || seq == 2);
+                drop(a);
+            }
+        });
+
+        let u = std::thread::spawn({
+            let wait = wait.clone();
+            || {
+                assert_eq!(SEQUENCE.load(Ordering::Relaxed), 0);
+                wait.wait();
+                let a = LOCK.read();
+                let seq = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+                assert!(seq == 1 || seq == 2);
+                drop(a);
+            }
+        });
+
+        let v = std::thread::spawn({
+            let wait = wait.clone();
+            || {
+                assert_eq!(SEQUENCE.load(Ordering::Relaxed), 0);
+                wait.wait();
+                let a = LOCK.write();
+                assert_eq!(SEQUENCE.fetch_add(1, Ordering::Relaxed), 3);
+                drop(a);
+            }
+        });
+
+        wait.wait();
+        // wait for all threads to park
+        std::thread::sleep(std::time::Duration::from_micros(10));
+
+        assert_eq!(SEQUENCE.fetch_add(1, Ordering::Relaxed), 0);
+
+        let lock = lock.downgrade();
+
+        t.join().unwrap();
+        u.join().unwrap();
+        assert_eq!(SEQUENCE.load(Ordering::Relaxed), 3);
+
+        drop(lock);
+        v.join().unwrap();
+        assert_eq!(SEQUENCE.load(Ordering::Relaxed), 4);
+    }
+
+    #[test]
+    fn wait_for_shared() {
+        static SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+        static LOCK: RawRwLock = AdaptiveLock::raw_rwlock();
+
+        let wait = WaitGroup::new();
 
         let lock = LOCK.read();
 
@@ -666,44 +700,12 @@ mod tests {
         });
 
         wait.wait();
+        // wait for all threads to park
+        std::thread::sleep(std::time::Duration::from_micros(10));
 
         assert_eq!(SEQUENCE.fetch_add(1, Ordering::Relaxed), 0);
         drop(lock);
         t.join().unwrap();
         assert_eq!(SEQUENCE.load(Ordering::Relaxed), 2);
-    }
-
-    #[test]
-    fn shared_to_exclusive() {
-        static SEQUENCE: AtomicUsize = AtomicUsize::new(0);
-        static LOCK: RawRwLock = SplitLock::raw_rwlock();
-
-        let wait = WaitGroup::new();
-
-        let lock = LOCK.read();
-
-        let t = std::thread::spawn({
-            let wait = wait.clone();
-            move || {
-                assert_eq!(SEQUENCE.load(Ordering::Relaxed), 0);
-                wait.wait();
-                let lock = LOCK.write();
-                assert_eq!(SEQUENCE.fetch_add(1, Ordering::Relaxed), 1);
-
-                let boo = lock.clone();
-
-                drop(lock);
-                drop(boo);
-            }
-        });
-
-        wait.wait();
-
-        assert_eq!(SEQUENCE.fetch_add(1, Ordering::Relaxed), 0);
-        lock.unlock_fair();
-        t.join().unwrap();
-        assert_eq!(SEQUENCE.load(Ordering::Relaxed), 2);
-
-        assert!(LOCK.try_read().is_some());
     }
 }

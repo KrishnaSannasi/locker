@@ -25,7 +25,7 @@ unsafe impl<L: Sync, T: Send + Sync> Sync for RwLock<L, T> {}
 impl<L, T> RwLock<L, T> {
     /// # Safety
     ///
-    /// You must pass `RawUniueLock::INIT` as lock
+    /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
     pub const fn from_raw_parts(raw: raw::RwLock<L>, value: T) -> Self {
         Self {

@@ -20,3 +20,6 @@ cfg-if = '*'
 [dependencies.parking_lot_core]
 version = '*'
 optional = true
+
+[dev-dependencies]
+crossbeam-utils = '*'

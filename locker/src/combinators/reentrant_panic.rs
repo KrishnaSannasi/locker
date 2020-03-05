@@ -148,7 +148,6 @@ unsafe impl<L: ?Sized + RawShareLockFair, I: ThreadInfo> RawShareLockFair for Re
     }
 }
 
-#[cfg(feature = "std")]
 #[test]
 #[should_panic = "tried to lock a locked exclusive lock from the same thread!"]
 fn reentrant_panic() {
@@ -160,7 +159,7 @@ fn reentrant_panic() {
 
     crate::exclusive_lock::ExclusiveGuard::bump(&mut _guard);
 
-    mtx.lock();
+    let _ = mtx.lock();
 
     drop(_guard);
 }

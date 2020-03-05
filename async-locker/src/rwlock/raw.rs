@@ -18,7 +18,7 @@ impl<L: RawRwLock> Default for RwLock<L> {
 impl<L> RwLock<L> {
     /// # Safety
     ///
-    /// You must pass `RawUniueLock::INIT` as lock
+    /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
     pub const unsafe fn from_raw_rwlock(raw: raw::RwLock<L>) -> Self {
         Self {

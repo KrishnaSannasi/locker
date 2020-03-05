@@ -24,7 +24,7 @@ unsafe impl<L: Sync + RawMutex, T: Send> Sync for Mutex<L, T> {}
 impl<L, T> Mutex<L, T> {
     /// # Safety
     ///
-    /// You must pass `RawUniueLock::INIT` as lock
+    /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
     pub const fn from_raw_parts(raw: raw::Mutex<L>, value: T) -> Self {
         Self {

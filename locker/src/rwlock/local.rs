@@ -1,17 +1,25 @@
+//! a local (single-threaded) rwlock lock
+
 use std::cell::Cell;
 
-pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
-pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;
-pub type RawRwLock = crate::rwlock::raw::RwLock<RawLock>;
-pub type RwLock<T> = crate::rwlock::RwLock<RawLock, T>;
+const EXC_LOCK: usize = !0;
 
-pub struct RawLock {
+/// a local (single-threaded) raw mutex
+pub type RawMutex = crate::mutex::raw::Mutex<LocalLock>;
+/// a local (single-threaded) mutex
+pub type Mutex<T> = crate::mutex::Mutex<LocalLock, T>;
+/// a local (single-threaded) raw rwlock
+pub type RawRwLock = crate::rwlock::raw::RwLock<LocalLock>;
+/// a local (single-threaded) rwlock
+pub type RwLock<T> = crate::rwlock::RwLock<LocalLock, T>;
+
+/// a local (single-threaded) rwlock lock
+pub struct LocalLock {
     state: Cell<usize>,
 }
 
-impl RawLock {
-    const EXC_LOCK: usize = usize::max_value();
-
+impl LocalLock {
+    /// create a local (single-threaded) rwlock lock
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -19,26 +27,30 @@ impl RawLock {
         }
     }
 
+    /// create a local (single-threaded) raw mutex
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
+    /// create a local (single-threaded) mutex
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
+    /// create a local (single-threaded) raw rwlock
     pub const fn raw_rwlock() -> RawRwLock {
         unsafe { RawRwLock::from_raw(Self::new()) }
     }
 
+    /// create a local (single-threaded) rwlock
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
         RwLock::from_raw_parts(Self::raw_rwlock(), value)
     }
 }
 
-impl crate::mutex::RawMutex for RawLock {}
-unsafe impl crate::rwlock::RawRwLock for RawLock {}
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::mutex::RawMutex for LocalLock {}
+unsafe impl crate::rwlock::RawRwLock for LocalLock {}
+unsafe impl crate::RawLockInfo for LocalLock {
     #[allow(clippy::declare_interior_mutable_const)]
     const INIT: Self = Self::new();
 
@@ -46,7 +58,7 @@ unsafe impl crate::RawLockInfo for RawLock {
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLock for LocalLock {
     #[inline]
     fn exc_lock(&self) {
         assert!(self.exc_try_lock(), "Can't lock a locked local lock");
@@ -55,7 +67,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     #[inline]
     fn exc_try_lock(&self) -> bool {
         if self.state.get() == 0 {
-            self.state.set(Self::EXC_LOCK);
+            self.state.set(EXC_LOCK);
             true
         } else {
             false
@@ -71,7 +83,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for RawLock {
     unsafe fn exc_bump(&self) {}
 }
 
-unsafe impl crate::share_lock::RawShareLock for RawLock {
+unsafe impl crate::share_lock::RawShareLock for LocalLock {
     #[inline]
     fn shr_lock(&self) {
         assert!(
@@ -82,9 +94,8 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
 
     #[inline]
     fn shr_try_lock(&self) -> bool {
-        let state = self.state.get();
-        if state != Self::EXC_LOCK {
-            self.state.set(state + 1);
+        if let Some(new_state) = self.state.get().checked_add(1) {
+            self.state.set(new_state);
             true
         } else {
             false
@@ -93,8 +104,10 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
 
     #[inline]
     unsafe fn shr_split(&self) {
-        let was_locked = self.shr_try_lock();
-        assert!(was_locked, "Tried to create too many shared locks!");
+        assert!(
+            self.shr_try_lock(),
+            "Tried to create too many shared locks!"
+        );
     }
 
     #[inline]
@@ -108,8 +121,14 @@ unsafe impl crate::share_lock::RawShareLock for RawLock {
     unsafe fn shr_bump(&self) {}
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for RawLock {
+unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for LocalLock {
     unsafe fn downgrade(&self) {
+        debug_assert_eq!(
+            self.state.get(),
+            EXC_LOCK,
+            "cannot downgrade a shared lock!"
+        );
+
         self.state.set(1);
     }
 }

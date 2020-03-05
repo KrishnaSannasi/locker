@@ -36,7 +36,7 @@ impl GlobalLock {
         unsafe { std::mem::transmute(value) }
     }
 
-    /// Create transpose a global mutex containing a slice into a slice of global mutexes
+    /// Transpose a global mutex containing a slice into a slice of global mutexes
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn mutex_transpose<T>(value: &mut Mutex<[T]>) -> &mut [Mutex<T>] {
         unsafe { std::mem::transmute(value) }

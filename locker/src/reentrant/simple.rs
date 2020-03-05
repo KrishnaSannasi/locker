@@ -156,56 +156,66 @@ unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for RawReen
     }
 }
 
-#[test]
-#[cfg(all(feature = "std", feature = "parking_lot"))]
-fn reentrant() {
-    use crate::mutex::simple::RawLock;
+#[cfg(test)]
+mod test {
+    #[test]
+    #[cfg(all(feature = "std", feature = "parking_lot"))]
+    fn reentrant() {
+        use crate::mutex::simple::RawLock;
 
-    type ReentrantMutex<T> = super::ReentrantMutex<RawReentrantLock<RawLock>, T>;
+        type ReentrantMutex<T> = super::ReentrantMutex<RawReentrantLock<RawLock>, T>;
 
-    let mtx = ReentrantMutex::new(Cell::new(0));
+        let mtx = ReentrantMutex::new(Cell::new(0));
 
-    let _lock = mtx.lock();
+        let _lock = mtx.lock();
 
-    assert_eq!(_lock.get(), 0);
+        assert_eq!(_lock.get(), 0);
 
-    mtx.lock().set(10);
+        mtx.lock().set(10);
 
-    assert_eq!(_lock.get(), 10);
-}
+        assert_eq!(_lock.get(), 10);
+    }
 
-#[test]
-#[cfg(all(feature = "std", feature = "parking_lot"))]
-fn reentrant_multi() {
-    use crate::mutex::simple::RawLock;
+    #[test]
+    #[cfg(all(feature = "std", feature = "parking_lot"))]
+    fn reentrant_multi() {
+        use crate::mutex::simple::RawLock;
+        use crossbeam_utils::WaitGroup;
 
-    type ReentrantMutex<T> = super::ReentrantMutex<RawReentrantLock<RawLock>, T>;
+        type ReentrantMutex<T> = super::ReentrantMutex<RawReentrantLock<RawLock>, T>;
 
-    let mtx = ReentrantMutex::new(Cell::new(0));
-    let mtx = std::sync::Arc::new(mtx);
+        let mtx = ReentrantMutex::new(Cell::new(0));
+        let mtx = std::sync::Arc::new(mtx);
 
-    let t = std::thread::spawn({
-        let mtx = mtx.clone();
-        move || {
-            assert!(mtx.try_lock().is_none());
-            let _lock = mtx.lock();
+        let first = WaitGroup::new();
+        let second = WaitGroup::new();
 
-            assert!(_lock.get() == 0 || _lock.get() == 10);
-        }
-    });
+        let t = std::thread::spawn({
+            let mtx = mtx.clone();
+            let first = first.clone();
+            let second = second.clone();
+            move || {
+                first.wait();
+                assert!(mtx.try_lock().is_none());
+                second.wait();
+                let _lock = mtx.lock();
 
-    let _lock = mtx.lock();
+                assert!(_lock.get() == 0 || _lock.get() == 10);
+            }
+        });
 
-    // provide enough time for the thread to initialize
-    std::thread::sleep(std::time::Duration::from_micros(10));
+        first.wait();
+        let _lock = mtx.lock();
+        second.wait();
 
-    assert_eq!(_lock.get(), 0);
+        assert_eq!(_lock.get(), 0);
 
-    mtx.lock().set(10);
+        mtx.lock().set(10);
 
-    assert_eq!(_lock.get(), 10);
+        assert_eq!(_lock.get(), 10);
 
-    drop(_lock);
+        drop(_lock);
 
-    t.join().unwrap();
+        t.join().unwrap();
+    }
 }

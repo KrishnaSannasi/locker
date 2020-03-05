@@ -28,8 +28,6 @@ cfg_if::cfg_if! {
 
 pub mod raw;
 
-/// Basic operations for a mutex.
-///
 /// Types implementing this trait can be used by [`Mutex`] to form a safe and fully-functioning mutex type.
 pub trait RawMutex: crate::RawLockInfo + RawExclusiveLock {}
 
@@ -93,7 +91,7 @@ impl<L, T: ?Sized> Mutex<L, T> {
             ///
             /// # Safety
             ///
-            /// You must not overwrite this mutex
+            /// You must not overwrite this raw mutex
             #[inline]
             pub const unsafe fn raw_mut(&mut self) -> &mut raw::Mutex<L> {
                 &mut self.raw
@@ -112,7 +110,7 @@ impl<L, T: ?Sized> Mutex<L, T> {
             ///
             /// # Safety
             ///
-            /// You must not overwrite this mutex
+            /// You must not overwrite this raw mutex
             #[inline]
             pub unsafe fn raw_mut(&mut self) -> &mut raw::Mutex<L> {
                 &mut self.raw
