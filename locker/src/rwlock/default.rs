@@ -140,6 +140,17 @@ unsafe impl crate::share_lock::RawShareLockUpgrade for DefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
+unsafe impl crate::share_lock::RawShareLockUpgradeTimed for DefaultLock {
+    unsafe fn try_upgrade_until(&self, instant: Self::Instant) -> bool {
+        self.0.try_upgrade_until(instant)
+    }
+
+    unsafe fn try_upgrade_for(&self, duration: Self::Duration) -> bool {
+        self.0.try_upgrade_for(duration)
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
 unsafe impl RawShareLockFair for DefaultLock {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {

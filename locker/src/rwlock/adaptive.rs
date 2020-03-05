@@ -284,6 +284,28 @@ unsafe impl crate::share_lock::RawShareLockUpgrade for AdaptiveLock {
     }
 }
 
+unsafe impl crate::share_lock::RawShareLockUpgradeTimed for AdaptiveLock {
+    unsafe fn try_upgrade_until(&self, instant: Self::Instant) -> bool {
+        use crate::share_lock::RawShareLockUpgrade;
+
+        if self.try_upgrade() {
+            true
+        } else {
+            self.upgrade_slow(Some(instant))
+        }
+    }
+
+    unsafe fn try_upgrade_for(&self, duration: Self::Duration) -> bool {
+        use crate::share_lock::RawShareLockUpgrade;
+
+        if self.try_upgrade() {
+            true
+        } else {
+            self.upgrade_slow(Instant::now().checked_add(duration))
+        }
+    }
+}
+
 impl AdaptiveLock {
     #[cold]
     fn exc_bump_slow(&self, force_fair: bool) {

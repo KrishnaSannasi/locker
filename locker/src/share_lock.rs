@@ -100,7 +100,7 @@ pub unsafe trait RawShareLock {
 /// The `Duration` and `Instant` types are specified as associated types so that
 /// this trait is usable even in no_std environments.
 pub unsafe trait RawShareLockTimed: RawShareLock + crate::RawTimedLock {
-    /// attempts to acquire a *shr lock*
+    /// attempts to acquire a *shr lock* until a timeout is reached.
     ///
     /// This function is blocking until either the shr lock is acquired
     /// in which case it returns true, or it times out, in which case it
@@ -109,7 +109,7 @@ pub unsafe trait RawShareLockTimed: RawShareLock + crate::RawTimedLock {
     /// returns true on success
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool;
 
-    /// attempts to acquire a *shr lock*
+    /// attempts to acquire a *shr lock* until a timeout is reached.
     ///
     /// This function is blocking until either the shr lock is acquired
     /// in which case it returns true, or it times out, in which case it
@@ -195,6 +195,41 @@ pub unsafe trait RawShareLockUpgrade:
     /// * the caller must own a *shr lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn try_upgrade(&self) -> bool;
+}
+
+/// Additional methods for RwLocks which support atomically downgrading an exclusive lock to a shared lock.
+///
+/// # Safety
+///
+/// [`RawShareLockUpgrade::upgrade`] must release a *shr lock* and acquire a *exc lock*
+///
+/// [`RawShareLockUpgrade::try_upgrade`] must release a *shr lock* and acquire a *exc lock* if it return true
+pub unsafe trait RawShareLockUpgradeTimed: RawShareLockUpgrade + RawShareLockTimed {
+    /// Attempts to atomically upgrade a *shr lock* to a *exc lock* until a timeout is reached.
+    ///
+    /// This function is blocking until either the *exc lock* was acquired,
+    /// then the *shr lock* is released and this function returns true.
+    /// Or the timeout was reached, in which case, the *shr lock* is maintained
+    /// and this function returns false.
+    ///
+    /// # Safety
+    ///
+    /// * the caller must own a *shr lock*
+    /// * the lock must not have been moved since it was locked
+    unsafe fn try_upgrade_until(&self, instant: Self::Instant) -> bool;
+
+    /// Attempts to atomically upgrade a *shr lock* to a *exc lock* until a timeout is reached.
+    ///
+    /// This function is blocking until either the *exc lock* was acquired,
+    /// then the *shr lock* is released and this function returns true.
+    /// Or the timeout was reached, in which case, the *shr lock* is maintained
+    /// and this function returns false.
+    ///
+    /// # Safety
+    ///
+    /// * the caller must own a *shr lock*
+    /// * the lock must not have been moved since it was locked
+    unsafe fn try_upgrade_for(&self, duration: Self::Duration) -> bool;
 }
 
 // unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &L {
