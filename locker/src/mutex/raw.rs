@@ -1,6 +1,6 @@
 //! A type-safe implementation of a `Mutex`
 
-use crate::exclusive_lock::RawExclusiveGuard;
+use crate::exclusive_lock::{RawExclusiveGuard, RawExclusiveLockTimed};
 use crate::mutex::RawMutex;
 
 /// A mutual exclusion primitive useful for protecting shared data
@@ -89,6 +89,10 @@ impl<L: RawMutex> Mutex<L>
 where
     L::ExclusiveGuardTraits: crate::Inhabitted,
 {
+    unsafe fn lock_unchecked(&self) -> RawExclusiveGuard<'_, L> {
+        RawExclusiveGuard::from_raw(&self.lock)
+    }
+
     /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///
     /// This function will block the local thread until it is available to acquire
@@ -106,7 +110,7 @@ where
     pub fn lock(&self) -> RawExclusiveGuard<'_, L> {
         unsafe {
             self.lock.exc_lock();
-            RawExclusiveGuard::from_raw(&self.lock)
+            self.lock_unchecked()
         }
     }
 
@@ -118,12 +122,43 @@ where
     /// This function does not block.
     #[inline]
     pub fn try_lock(&self) -> Option<RawExclusiveGuard<'_, L>> {
-        unsafe {
-            if self.lock.exc_try_lock() {
-                Some(RawExclusiveGuard::from_raw(&self.lock))
-            } else {
-                None
-            }
+        if self.lock.exc_try_lock() {
+            unsafe { Some(self.lock_unchecked()) }
+        } else {
+            None
+        }
+    }
+}
+
+impl<L: RawMutex + RawExclusiveLockTimed> Mutex<L>
+where
+    L::ExclusiveGuardTraits: crate::Inhabitted,
+{
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_lock_until(&self, instant: L::Instant) -> Option<RawExclusiveGuard<'_, L>> {
+        if self.lock.exc_try_lock_until(instant) {
+            unsafe { Some(self.lock_unchecked()) }
+        } else {
+            None
+        }
+    }
+
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_lock_for(&self, duration: L::Duration) -> Option<RawExclusiveGuard<'_, L>> {
+        if self.lock.exc_try_lock_for(duration) {
+            unsafe { Some(self.lock_unchecked()) }
+        } else {
+            None
         }
     }
 }

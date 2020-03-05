@@ -242,10 +242,12 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for AdaptiveLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for AdaptiveLock {
+unsafe impl crate::RawTimedLock for AdaptiveLock {
     type Instant = Instant;
     type Duration = Duration;
+}
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for AdaptiveLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         if self.exc_try_lock() {
             true

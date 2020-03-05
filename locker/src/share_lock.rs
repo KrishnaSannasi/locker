@@ -99,13 +99,7 @@ pub unsafe trait RawShareLock {
 ///
 /// The `Duration` and `Instant` types are specified as associated types so that
 /// this trait is usable even in no_std environments.
-pub unsafe trait RawShareLockTimed {
-    /// Instant type used for `try_lock_until`.
-    type Instant;
-
-    /// Duration type used for `try_lock_until`.
-    type Duration;
-
+pub unsafe trait RawShareLockTimed: RawShareLock + crate::RawTimedLock {
     /// attempts to acquire a *shr lock*
     ///
     /// This function is blocking until either the shr lock is acquired

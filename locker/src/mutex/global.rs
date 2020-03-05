@@ -139,10 +139,13 @@ unsafe impl RawExclusiveLockFair for GlobalLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for GlobalLock {
+unsafe impl crate::RawTimedLock for GlobalLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
+}
 
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for GlobalLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.get().exc_try_lock_until(instant)
     }

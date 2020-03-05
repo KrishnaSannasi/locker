@@ -5,13 +5,13 @@ use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
 /// A default raw mutex
-pub type RawMutex = crate::mutex::raw::Mutex<DefaultLock>;
+pub type RawMutex = crate::mutex::raw::Mutex<SplitDefaultLock>;
 /// A default mutex
-pub type Mutex<T> = crate::mutex::Mutex<DefaultLock, T>;
+pub type Mutex<T> = crate::mutex::Mutex<SplitDefaultLock, T>;
 /// A default raw mutex
-pub type RawRwLock = crate::rwlock::raw::RwLock<DefaultLock>;
+pub type RawRwLock = crate::rwlock::raw::RwLock<SplitDefaultLock>;
 /// A default mutex
-pub type RwLock<T> = crate::rwlock::RwLock<DefaultLock, T>;
+pub type RwLock<T> = crate::rwlock::RwLock<SplitDefaultLock, T>;
 
 #[cfg(feature = "parking_lot_core")]
 type Lock = crate::rwlock::splittable::SplitLock;
@@ -25,9 +25,9 @@ type Lock = crate::rwlock::splittable_spin::SplitSpinLock;
 /// the `parking_lot_core` feature is enabled then it will use
 /// an adaptive strategy
 #[repr(transparent)]
-pub struct DefaultLock(Lock);
+pub struct SplitDefaultLock(Lock);
 
-impl DefaultLock {
+impl SplitDefaultLock {
     /// Create a new default mutex lock
     pub const fn new() -> Self {
         Self(Lock::new())
@@ -54,15 +54,15 @@ impl DefaultLock {
     }
 }
 
-impl crate::mutex::RawMutex for DefaultLock {}
-unsafe impl RawLockInfo for DefaultLock {
+impl crate::mutex::RawMutex for SplitDefaultLock {}
+unsafe impl RawLockInfo for SplitDefaultLock {
     const INIT: Self = Self::new();
 
     type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;
 }
 
-unsafe impl RawExclusiveLock for DefaultLock {
+unsafe impl RawExclusiveLock for SplitDefaultLock {
     #[inline]
     fn exc_lock(&self) {
         self.0.exc_lock();
@@ -85,7 +85,7 @@ unsafe impl RawExclusiveLock for DefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl RawExclusiveLockFair for DefaultLock {
+unsafe impl RawExclusiveLockFair for SplitDefaultLock {
     #[inline]
     unsafe fn exc_unlock_fair(&self) {
         self.0.exc_unlock_fair()
@@ -97,7 +97,7 @@ unsafe impl RawExclusiveLockFair for DefaultLock {
     }
 }
 
-unsafe impl RawShareLock for DefaultLock {
+unsafe impl RawShareLock for SplitDefaultLock {
     #[inline]
     fn shr_lock(&self) {
         self.0.shr_lock();
@@ -124,7 +124,7 @@ unsafe impl RawShareLock for DefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl RawShareLockFair for DefaultLock {
+unsafe impl RawShareLockFair for SplitDefaultLock {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
         self.0.shr_unlock_fair()
@@ -137,10 +137,13 @@ unsafe impl RawShareLockFair for DefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for DefaultLock {
+unsafe impl crate::RawTimedLock for SplitDefaultLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
+}
 
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitDefaultLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.exc_try_lock_until(instant)
     }
@@ -151,10 +154,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for DefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::share_lock::RawShareLockTimed for DefaultLock {
-    type Instant = std::time::Instant;
-    type Duration = std::time::Duration;
-
+unsafe impl crate::share_lock::RawShareLockTimed for SplitDefaultLock {
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.shr_try_lock_until(instant)
     }

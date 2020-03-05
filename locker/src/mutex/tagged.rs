@@ -3,7 +3,7 @@
 use crate::exclusive_lock::RawExclusiveLock;
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 // UnparkToken used to indicate that that the target thread should attempt to
 // state the mutex again as soon as it is unparked.
@@ -370,10 +370,12 @@ impl TaggedLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for TaggedLock {
-    type Instant = Instant;
-    type Duration = Duration;
+unsafe impl crate::RawTimedLock for TaggedLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+}
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for TaggedLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         if self.exc_try_lock() {
             true

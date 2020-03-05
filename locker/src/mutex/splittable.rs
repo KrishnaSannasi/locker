@@ -12,7 +12,7 @@ const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
 const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// a splittable raw mutex
 ///
@@ -262,10 +262,12 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for SplitLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitLock {
-    type Instant = Instant;
-    type Duration = Duration;
+unsafe impl crate::RawTimedLock for SplitLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+}
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         if self.exc_try_lock() {
             true

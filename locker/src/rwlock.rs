@@ -2,8 +2,8 @@
 
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::ExclusiveGuard;
-use crate::share_lock::{RawShareLock, ShareGuard};
+use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLockTimed};
+use crate::share_lock::{RawShareLock, RawShareLockTimed, ShareGuard};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
@@ -149,6 +149,24 @@ where
     L::ExclusiveGuardTraits: crate::Inhabitted,
     L::ShareGuardTraits: crate::Inhabitted,
 {
+    #[inline]
+    fn wrap_write<'s>(
+        &'s self,
+        raw: crate::exclusive_lock::RawExclusiveGuard<'s, L>,
+    ) -> ExclusiveGuard<'s, L, T> {
+        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        unsafe { ExclusiveGuard::from_raw_parts(raw, self.value.get()) }
+    }
+
+    #[inline]
+    fn wrap_read<'s>(
+        &'s self,
+        raw: crate::share_lock::RawShareGuard<'s, L>,
+    ) -> ShareGuard<'s, L, T> {
+        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        unsafe { ShareGuard::from_raw_parts(raw, self.value.get()) }
+    }
+
     /// Locks this `RwLock` with exclusive write access, blocking the current thread until it can be acquired.
     ///
     /// This function will not return while other writers or other readers currently have access to the lock.
@@ -161,7 +179,7 @@ where
     /// single threaded rwlock)
     #[inline]
     pub fn write(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe { ExclusiveGuard::from_raw_parts(self.raw.write(), self.value.get()) }
+        self.wrap_write(self.raw.write())
     }
 
     /// Attempts to lock this `RwLock` with exclusive write access.
@@ -172,12 +190,7 @@ where
     /// This function does not block or panic.
     #[inline]
     pub fn try_write(&self) -> Option<ExclusiveGuard<'_, L, T>> {
-        unsafe {
-            Some(ExclusiveGuard::from_raw_parts(
-                self.raw.try_write()?,
-                self.value.get(),
-            ))
-        }
+        Some(self.wrap_write(self.raw.try_write()?))
     }
 
     /// Locks this `RwLock` with shared read access, blocking the current thread until it can be acquired.
@@ -196,7 +209,7 @@ where
     /// single threaded rwlock)
     #[inline]
     pub fn read(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(self.raw.read(), self.value.get()) }
+        self.wrap_read(self.raw.read())
     }
 
     /// Attempts to acquire this `RwLock` with shared read access.
@@ -207,11 +220,52 @@ where
     /// This function does not block or panic.
     #[inline]
     pub fn try_read(&self) -> Option<ShareGuard<'_, L, T>> {
-        unsafe {
-            Some(ShareGuard::from_raw_parts(
-                self.raw.try_read()?,
-                self.value.get(),
-            ))
-        }
+        Some(self.wrap_read(self.raw.try_read()?))
+    }
+}
+
+impl<L: RawRwLock + RawExclusiveLockTimed + RawShareLockTimed, T: ?Sized> RwLock<L, T>
+where
+    L::ExclusiveGuardTraits: crate::Inhabitted,
+    L::ShareGuardTraits: crate::Inhabitted,
+{
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_write_until(&self, instant: L::Instant) -> Option<ExclusiveGuard<'_, L, T>> {
+        Some(self.wrap_write(self.raw.try_write_until(instant)?))
+    }
+
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_write_for(&self, duration: L::Duration) -> Option<ExclusiveGuard<'_, L, T>> {
+        Some(self.wrap_write(self.raw.try_write_for(duration)?))
+    }
+
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_read_until(&self, instant: L::Instant) -> Option<ShareGuard<'_, L, T>> {
+        Some(self.wrap_read(self.raw.try_read_until(instant)?))
+    }
+
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_read_for(&self, duration: L::Duration) -> Option<ShareGuard<'_, L, T>> {
+        Some(self.wrap_read(self.raw.try_read_for(duration)?))
     }
 }

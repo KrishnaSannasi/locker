@@ -142,10 +142,13 @@ unsafe impl RawExclusiveLockFair for TaggedDefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for TaggedDefaultLock {
+unsafe impl crate::RawTimedLock for TaggedDefaultLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
+}
 
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for TaggedDefaultLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.exc_try_lock_until(instant)
     }

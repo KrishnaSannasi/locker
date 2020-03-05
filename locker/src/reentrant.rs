@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
 use std::num::NonZeroUsize;
 
-use crate::share_lock::{RawShareLock, ShareGuard};
+use crate::share_lock::{RawShareLock, RawShareLockTimed, ShareGuard};
 
 #[cfg(feature = "extra")]
 pub mod simple;
@@ -117,17 +117,33 @@ where
     L::ShareGuardTraits: crate::Inhabitted,
 {
     #[inline]
+    fn wrap<'s>(&'s self, raw: crate::share_lock::RawShareGuard<'s, L>) -> ShareGuard<'s, L, T> {
+        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        unsafe { ShareGuard::from_raw_parts(raw, self.value.get()) }
+    }
+
+    #[inline]
     pub fn lock(&self) -> ShareGuard<'_, L, T> {
-        unsafe { ShareGuard::from_raw_parts(self.raw.lock(), self.value.get()) }
+        self.wrap(self.raw.lock())
     }
 
     #[inline]
     pub fn try_lock(&self) -> Option<ShareGuard<'_, L, T>> {
-        unsafe {
-            Some(ShareGuard::from_raw_parts(
-                self.raw.try_lock()?,
-                self.value.get(),
-            ))
-        }
+        Some(self.wrap(self.raw.try_lock()?))
+    }
+}
+
+impl<L: RawReentrantMutex + RawShareLockTimed, T: ?Sized> ReentrantMutex<L, T>
+where
+    L::ShareGuardTraits: crate::Inhabitted,
+{
+    #[inline]
+    pub fn try_lock_until(&self, instant: L::Instant) -> Option<ShareGuard<'_, L, T>> {
+        Some(self.wrap(self.raw.try_lock_until(instant)?))
+    }
+
+    #[inline]
+    pub fn try_lock_for(&self, duration: L::Duration) -> Option<ShareGuard<'_, L, T>> {
+        Some(self.wrap(self.raw.try_lock_for(duration)?))
     }
 }

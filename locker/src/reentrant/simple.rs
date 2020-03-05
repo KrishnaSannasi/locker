@@ -156,10 +156,12 @@ unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for RawReen
     }
 }
 
-unsafe impl<L: RawExclusiveLockTimed, I: ThreadInfo> RawShareLockTimed for RawReentrantLock<L, I> {
+unsafe impl<L: crate::RawTimedLock, I: ThreadInfo> crate::RawTimedLock for RawReentrantLock<L, I> {
     type Instant = L::Instant;
     type Duration = L::Duration;
+}
 
+unsafe impl<L: RawExclusiveLockTimed, I: ThreadInfo> RawShareLockTimed for RawReentrantLock<L, I> {
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.lock_internal(|| self.inner.exc_try_lock_until(instant))
     }

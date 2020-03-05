@@ -137,10 +137,13 @@ unsafe impl RawShareLockFair for DefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for DefaultLock {
+unsafe impl crate::RawTimedLock for DefaultLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
+}
 
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for DefaultLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.exc_try_lock_until(instant)
     }
@@ -152,9 +155,6 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for DefaultLock {
 
 #[cfg(feature = "parking_lot_core")]
 unsafe impl crate::share_lock::RawShareLockTimed for DefaultLock {
-    type Instant = std::time::Instant;
-    type Duration = std::time::Duration;
-
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.shr_try_lock_until(instant)
     }

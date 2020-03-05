@@ -32,7 +32,7 @@ const TOKEN_EXCLUSIVE: ParkToken = ParkToken(1);
 const TOKEN_SHARED: ParkToken = ParkToken(2);
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 /// a splittable raw mutex
 ///
@@ -638,10 +638,12 @@ impl SplitLock {
     }
 }
 
-unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitLock {
-    type Instant = Instant;
-    type Duration = Duration;
+unsafe impl crate::RawTimedLock for SplitLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+}
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitLock {
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         if self.exc_try_lock() {
             true
@@ -660,9 +662,6 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitLock {
 }
 
 unsafe impl crate::share_lock::RawShareLockTimed for SplitLock {
-    type Instant = Instant;
-    type Duration = Duration;
-
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         if self.shr_try_lock() {
             true

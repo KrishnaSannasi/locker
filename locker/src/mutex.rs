@@ -2,7 +2,7 @@
 
 use std::cell::UnsafeCell;
 
-use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLock};
+use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLock, RawExclusiveLockTimed};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "extra")] {
@@ -150,6 +150,15 @@ impl<L: RawMutex, T: ?Sized> Mutex<L, T>
 where
     L::ExclusiveGuardTraits: crate::Inhabitted,
 {
+    #[inline]
+    fn wrap<'s>(
+        &'s self,
+        raw: crate::exclusive_lock::RawExclusiveGuard<'s, L>,
+    ) -> ExclusiveGuard<'s, L, T> {
+        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        unsafe { ExclusiveGuard::from_raw_parts(raw, self.value.get()) }
+    }
+
     /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///
     /// This function will block the local thread until it is available to acquire
@@ -165,7 +174,7 @@ where
     /// single threaded mutex)
     #[inline]
     pub fn lock(&self) -> ExclusiveGuard<'_, L, T> {
-        unsafe { ExclusiveGuard::from_raw_parts(self.raw.lock(), self.value.get()) }
+        self.wrap(self.raw.lock())
     }
 
     /// Attempts to acquire this lock.
@@ -176,11 +185,31 @@ where
     /// This function does not block.
     #[inline]
     pub fn try_lock(&self) -> Option<ExclusiveGuard<'_, L, T>> {
-        unsafe {
-            Some(ExclusiveGuard::from_raw_parts(
-                self.raw.try_lock()?,
-                self.value.get(),
-            ))
-        }
+        Some(self.wrap(self.raw.try_lock()?))
+    }
+}
+
+impl<L: RawMutex + RawExclusiveLockTimed, T: ?Sized> Mutex<L, T>
+where
+    L::ExclusiveGuardTraits: crate::Inhabitted,
+{
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_lock_until(&self, instant: L::Instant) -> Option<ExclusiveGuard<'_, L, T>> {
+        Some(self.wrap(self.raw.try_lock_until(instant)?))
+    }
+
+    /// Attempts to acquire this lock until a timeout is reached.
+    ///
+    /// If the lock could not be acquired before the timeout expired,
+    /// then None is returned. Otherwise, an RAII guard is returned.
+    /// The lock will be unlocked when the guard is dropped.
+    #[inline]
+    pub fn try_lock_for(&self, duration: L::Duration) -> Option<ExclusiveGuard<'_, L, T>> {
+        Some(self.wrap(self.raw.try_lock_for(duration)?))
     }
 }

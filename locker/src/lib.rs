@@ -69,6 +69,21 @@ pub unsafe trait RawLockInfo {
     type ShareGuardTraits: marker::Marker;
 }
 
+/// Used in the `*LockTimed` traits
+///
+/// This is extracted out because if both `RawExclusiveLockTimed` and `RawShareLockTimed`
+/// are implemented, then they should both use the same instant and duration
+///
+/// The `Duration` and `Instant` types are specified as associated types so that
+/// this trait is usable even in no_std environments.
+pub unsafe trait RawTimedLock: RawLockInfo {
+    /// Instant type used for `try_lock_until`.
+    type Instant;
+
+    /// Duration type used for `try_lock_until`.
+    type Duration;
+}
+
 pub mod combinators;
 mod defer;
 pub mod exclusive_lock;
