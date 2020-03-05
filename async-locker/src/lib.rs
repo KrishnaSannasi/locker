@@ -1,3 +1,5 @@
+#![allow(unused, clippy::missing_safety_doc)]
+
 macro_rules! defer {
     ($($inner:tt)*) => {
         let _defer = crate::defer::Defer::new(|| $($inner)*);

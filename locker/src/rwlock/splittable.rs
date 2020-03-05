@@ -32,7 +32,7 @@ const TOKEN_EXCLUSIVE: ParkToken = ParkToken(1);
 const TOKEN_SHARED: ParkToken = ParkToken(2);
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// a splittable raw mutex
 ///
@@ -634,6 +634,48 @@ impl SplitLock {
             // Loop back and try locking again
             wait.reset();
             state = self.state.load(Ordering::Relaxed);
+        }
+    }
+}
+
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitLock {
+    type Instant = Instant;
+    type Duration = Duration;
+
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+        if self.exc_try_lock() {
+            true
+        } else {
+            self.exc_lock_slow(Some(instant))
+        }
+    }
+
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+        if self.exc_try_lock() {
+            true
+        } else {
+            self.exc_lock_slow(Instant::now().checked_add(duration))
+        }
+    }
+}
+
+unsafe impl crate::share_lock::RawShareLockTimed for SplitLock {
+    type Instant = Instant;
+    type Duration = Duration;
+
+    fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
+        if self.shr_try_lock() {
+            true
+        } else {
+            self.shr_lock_slow(Some(instant))
+        }
+    }
+
+    fn shr_try_lock_for(&self, duration: Self::Duration) -> bool {
+        if self.shr_try_lock() {
+            true
+        } else {
+            self.shr_lock_slow(Instant::now().checked_add(duration))
         }
     }
 }

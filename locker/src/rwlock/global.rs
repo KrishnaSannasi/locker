@@ -81,6 +81,12 @@ impl GlobalLock {
         (self as *const _ as usize) % GLOBALLOCK.len()
     }
 
+    #[inline(always)]
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn get(&self) -> &'static DefaultLock {
+        &GLOBALLOCK[self.addr()]
+    }
+
     /// Checks if two global locks will contend
     #[inline]
     #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -140,22 +146,22 @@ unsafe impl RawLockInfo for GlobalLock {
 unsafe impl RawExclusiveLock for GlobalLock {
     #[inline]
     fn exc_lock(&self) {
-        GLOBALLOCK[self.addr()].exc_lock()
+        self.get().exc_lock()
     }
 
     #[inline]
     fn exc_try_lock(&self) -> bool {
-        GLOBALLOCK[self.addr()].exc_try_lock()
+        self.get().exc_try_lock()
     }
 
     #[inline]
     unsafe fn exc_unlock(&self) {
-        GLOBALLOCK[self.addr()].exc_unlock()
+        self.get().exc_unlock()
     }
 
     #[inline]
     unsafe fn exc_bump(&self) {
-        GLOBALLOCK[self.addr()].exc_bump()
+        self.get().exc_bump()
     }
 }
 
@@ -163,30 +169,30 @@ unsafe impl RawExclusiveLock for GlobalLock {
 unsafe impl RawExclusiveLockFair for GlobalLock {
     #[inline]
     unsafe fn exc_unlock_fair(&self) {
-        GLOBALLOCK[self.addr()].exc_unlock_fair()
+        self.get().exc_unlock_fair()
     }
 
     #[inline]
     unsafe fn exc_bump_fair(&self) {
-        GLOBALLOCK[self.addr()].exc_bump_fair()
+        self.get().exc_bump_fair()
     }
 }
 
 unsafe impl RawShareLock for GlobalLock {
     fn shr_lock(&self) {
-        GLOBALLOCK[self.addr()].shr_lock()
+        self.get().shr_lock()
     }
 
     fn shr_try_lock(&self) -> bool {
-        GLOBALLOCK[self.addr()].shr_try_lock()
+        self.get().shr_try_lock()
     }
 
     unsafe fn shr_split(&self) {
-        GLOBALLOCK[self.addr()].shr_split()
+        self.get().shr_split()
     }
 
     unsafe fn shr_unlock(&self) {
-        GLOBALLOCK[self.addr()].shr_unlock()
+        self.get().shr_unlock()
     }
 }
 
@@ -194,12 +200,40 @@ unsafe impl RawShareLock for GlobalLock {
 unsafe impl RawShareLockFair for GlobalLock {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
-        GLOBALLOCK[self.addr()].shr_unlock_fair()
+        self.get().shr_unlock_fair()
     }
 
     #[inline]
     unsafe fn shr_bump_fair(&self) {
-        GLOBALLOCK[self.addr()].shr_bump_fair()
+        self.get().shr_bump_fair()
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for GlobalLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+        self.get().exc_try_lock_until(instant)
+    }
+
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+        self.get().exc_try_lock_for(duration)
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::share_lock::RawShareLockTimed for GlobalLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+
+    fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
+        self.get().shr_try_lock_until(instant)
+    }
+
+    fn shr_try_lock_for(&self, duration: Self::Duration) -> bool {
+        self.get().shr_try_lock_for(duration)
     }
 }
 
