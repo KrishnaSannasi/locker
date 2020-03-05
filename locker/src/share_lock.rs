@@ -108,14 +108,18 @@ pub unsafe trait RawShareLockTimed {
 
     /// attempts to acquire a *shr lock*
     ///
-    /// This function is non-blocking and may not panic
+    /// This function is blocking until either the shr lock is acquired
+    /// in which case it returns true, or it times out, in which case it
+    /// returns false
     ///
     /// returns true on success
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool;
 
     /// attempts to acquire a *shr lock*
     ///
-    /// This function is non-blocking and may not panic
+    /// This function is blocking until either the shr lock is acquired
+    /// in which case it returns true, or it times out, in which case it
+    /// returns false
     ///
     /// returns true on success
     fn shr_try_lock_for(&self, duration: Self::Duration) -> bool;

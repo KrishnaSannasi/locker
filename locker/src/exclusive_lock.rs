@@ -97,16 +97,20 @@ pub unsafe trait RawExclusiveLockTimed: RawExclusiveLock {
     /// Duration type used for `try_lock_until`.
     type Duration;
 
-    /// attempts to acquire a *shr lock*
+    /// attempts to acquire a *exc lock*
     ///
-    /// This function is non-blocking and may not panic
+    /// This function is blocking until either the shr lock is acquired
+    /// in which case it returns true, or it times out, in which case it
+    /// returns false
     ///
     /// returns true on success
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool;
 
-    /// attempts to acquire a *shr lock*
+    /// attempts to acquire a *exc lock*
     ///
-    /// This function is non-blocking and may not panic
+    /// This function is blocking until either the shr lock is acquired
+    /// in which case it returns true, or it times out, in which case it
+    /// returns false
     ///
     /// returns true on success
     fn exc_try_lock_for(&self, duration: Self::Duration) -> bool;

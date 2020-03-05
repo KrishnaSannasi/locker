@@ -1,8 +1,8 @@
 use std::cell::Cell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
-use crate::share_lock::{RawShareLock, RawShareLockFair};
+use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair, RawExclusiveLockTimed};
+use crate::share_lock::{RawShareLock, RawShareLockFair, RawShareLockTimed};
 
 use super::ThreadInfo;
 
@@ -153,6 +153,19 @@ unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for RawReen
         if self.count.get() == 0 {
             self.inner.exc_bump_fair();
         }
+    }
+}
+
+unsafe impl<L: RawExclusiveLockTimed, I: ThreadInfo> RawShareLockTimed for RawReentrantLock<L, I> {
+    type Instant = L::Instant;
+    type Duration = L::Duration;
+
+    fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
+        self.lock_internal(|| self.inner.exc_try_lock_until(instant))
+    }
+
+    fn shr_try_lock_for(&self, duration: Self::Duration) -> bool {
+        self.lock_internal(|| self.inner.exc_try_lock_for(duration))
     }
 }
 
