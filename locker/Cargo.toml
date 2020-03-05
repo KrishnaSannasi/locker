@@ -8,11 +8,12 @@ edition = "2018"
 
 [features]
 
-default = ['parking_lot_core', 'extra', 'std']
+default = ['adaptive', 'extra', 'std']
 extra = []
 std = []
 alloc = []
 nightly = []
+adaptive = ['parking_lot_core', 'std']
 
 [dependencies]
 cfg-if = '*'

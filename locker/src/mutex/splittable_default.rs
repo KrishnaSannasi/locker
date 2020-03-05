@@ -82,6 +82,20 @@ unsafe impl RawExclusiveLockFair for SplitDefaultLock {
     }
 }
 
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitDefaultLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+        self.0.exc_try_lock_until(instant)
+    }
+
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+        self.0.exc_try_lock_for(duration)
+    }
+}
+
 unsafe impl SplittableExclusiveLock for SplitDefaultLock {
     #[inline]
     unsafe fn exc_split(&self) {

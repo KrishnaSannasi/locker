@@ -95,6 +95,32 @@ pub unsafe trait RawShareLock {
     }
 }
 
+/// Additional methods for `RawShareLock` which support locking with timeouts.
+///
+/// The `Duration` and `Instant` types are specified as associated types so that
+/// this trait is usable even in no_std environments.
+pub unsafe trait RawShareLockTimed {
+    /// Instant type used for `try_lock_until`.
+    type Instant;
+
+    /// Duration type used for `try_lock_until`.
+    type Duration;
+
+    /// attempts to acquire a *shr lock*
+    ///
+    /// This function is non-blocking and may not panic
+    ///
+    /// returns true on success
+    fn shr_try_lock_until(&self, instant: Self::Instant) -> bool;
+
+    /// attempts to acquire a *shr lock*
+    ///
+    /// This function is non-blocking and may not panic
+    ///
+    /// returns true on success
+    fn shr_try_lock_for(&self, duration: Self::Duration) -> bool;
+}
+
 /// Additional methods for locks which support fair unlocking.
 ///
 /// Fair unlocking means that a lock is handed directly over to

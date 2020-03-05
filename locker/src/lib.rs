@@ -72,12 +72,12 @@ pub unsafe trait RawLockInfo {
 pub mod combinators;
 mod defer;
 pub mod exclusive_lock;
-pub mod mutex; // 110
+pub mod mutex;
 #[allow(missing_docs)]
 pub mod once; // 68
 #[allow(missing_docs)]
 pub mod reentrant; // 38
-pub mod rwlock; // 99
+pub mod rwlock;
 pub mod share_lock;
 mod spin_wait;
 

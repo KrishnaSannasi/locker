@@ -48,6 +48,12 @@ impl GlobalLock {
         (self as *const _ as usize) % GLOBAL.len()
     }
 
+    #[inline(always)]
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn get(&self) -> &'static DefaultLock {
+        &GLOBAL[self.addr()]
+    }
+
     /// Checks if two global locks will contend
     #[inline]
     #[allow(clippy::trivially_copy_pass_by_ref)]
@@ -100,22 +106,22 @@ unsafe impl RawLockInfo for GlobalLock {
 unsafe impl RawExclusiveLock for GlobalLock {
     #[inline]
     fn exc_lock(&self) {
-        GLOBAL[self.addr()].exc_lock()
+        self.get().exc_lock()
     }
 
     #[inline]
     fn exc_try_lock(&self) -> bool {
-        GLOBAL[self.addr()].exc_try_lock()
+        self.get().exc_try_lock()
     }
 
     #[inline]
     unsafe fn exc_unlock(&self) {
-        GLOBAL[self.addr()].exc_unlock()
+        self.get().exc_unlock()
     }
 
     #[inline]
     unsafe fn exc_bump(&self) {
-        GLOBAL[self.addr()].exc_bump()
+        self.get().exc_bump()
     }
 }
 
@@ -123,12 +129,26 @@ unsafe impl RawExclusiveLock for GlobalLock {
 unsafe impl RawExclusiveLockFair for GlobalLock {
     #[inline]
     unsafe fn exc_unlock_fair(&self) {
-        GLOBAL[self.addr()].exc_unlock_fair()
+        self.get().exc_unlock_fair()
     }
 
     #[inline]
     unsafe fn exc_bump_fair(&self) {
-        GLOBAL[self.addr()].exc_bump_fair()
+        self.get().exc_bump_fair()
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for GlobalLock {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+        self.get().exc_try_lock_until(instant)
+    }
+
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+        self.get().exc_try_lock_for(duration)
     }
 }
 

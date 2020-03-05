@@ -12,7 +12,7 @@ const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
 const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// an adaptive raw mutex
 pub type RawMutex = crate::mutex::raw::Mutex<AdaptiveLock>;
@@ -238,6 +238,27 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for AdaptiveLock {
     unsafe fn exc_bump_fair(&self) {
         if self.state.load(Ordering::Relaxed) & Self::PARK_BIT != 0 {
             self.bump_slow(true);
+        }
+    }
+}
+
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for AdaptiveLock {
+    type Instant = Instant;
+    type Duration = Duration;
+
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+        if self.exc_try_lock() {
+            true
+        } else {
+            self.lock_slow(Some(instant))
+        }
+    }
+
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+        if self.exc_try_lock() {
+            true
+        } else {
+            self.lock_slow(Instant::now().checked_add(duration))
         }
     }
 }

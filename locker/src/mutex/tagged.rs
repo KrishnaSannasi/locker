@@ -3,7 +3,7 @@
 use crate::exclusive_lock::RawExclusiveLock;
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 // UnparkToken used to indicate that that the target thread should attempt to
 // state the mutex again as soon as it is unparked.
@@ -367,5 +367,26 @@ impl TaggedLock {
     fn bump_slow(&self, force_fair: bool) {
         self.unlock_slow(force_fair);
         self.exc_lock();
+    }
+}
+
+unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for TaggedLock {
+    type Instant = Instant;
+    type Duration = Duration;
+
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+        if self.exc_try_lock() {
+            true
+        } else {
+            self.lock_slow(Some(instant))
+        }
+    }
+
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+        if self.exc_try_lock() {
+            true
+        } else {
+            self.lock_slow(Instant::now().checked_add(duration))
+        }
     }
 }

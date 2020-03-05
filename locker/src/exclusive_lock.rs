@@ -86,6 +86,32 @@ pub unsafe trait RawExclusiveLock {
     }
 }
 
+/// Additional methods for `RawExclusiveLock` which support locking with timeouts.
+///
+/// The `Duration` and `Instant` types are specified as associated types so that
+/// this trait is usable even in no_std environments.
+pub unsafe trait RawExclusiveLockTimed: RawExclusiveLock {
+    /// Instant type used for `try_lock_until`.
+    type Instant;
+
+    /// Duration type used for `try_lock_until`.
+    type Duration;
+
+    /// attempts to acquire a *shr lock*
+    ///
+    /// This function is non-blocking and may not panic
+    ///
+    /// returns true on success
+    fn exc_try_lock_until(&self, instant: Self::Instant) -> bool;
+
+    /// attempts to acquire a *shr lock*
+    ///
+    /// This function is non-blocking and may not panic
+    ///
+    /// returns true on success
+    fn exc_try_lock_for(&self, duration: Self::Duration) -> bool;
+}
+
 /// # Safety
 ///
 /// * `exc_unlock` must be called `n` times before `exc_lock`,
