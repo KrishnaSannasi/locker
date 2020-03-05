@@ -234,6 +234,43 @@ impl<'a, L: RawShareLock + RawLockInfo, T: ?Sized, St> ShareGuard<'a, L, T, St> 
     }
 }
 
+impl<'a, L: crate::share_lock::RawShareLockUpgrade + RawLockInfo, T: ?Sized> ShareGuard<'a, L, T>
+where
+    L::ExclusiveGuardTraits: crate::Inhabitted,
+    L::ShareGuardTraits: crate::Inhabitted,
+{
+    /// Atomically upgrades a read lock lock into a exclusive write lock,
+    /// blocking the current thread until it can be acquired.
+    ///
+    /// # Panic
+    ///
+    /// This function may panic if the lock is impossible to acquire
+    pub fn upgrade(g: Self) -> crate::exclusive_lock::ExclusiveGuard<'a, L, T> {
+        unsafe {
+            let (raw, ptr) = ShareGuard::into_raw_parts(g);
+            crate::exclusive_lock::ExclusiveGuard::from_raw_parts(raw.upgrade(), ptr as *mut T)
+        }
+    }
+
+    /// Attempts to atomically upgrades a read lock lock into a exclusive write lock,
+    /// without blocking or panicking
+    ///
+    /// returns a exclusive guard if successful, otherwise returns the current guard
+    pub fn try_upgrade(g: Self) -> Result<crate::exclusive_lock::ExclusiveGuard<'a, L, T>, Self> {
+        unsafe {
+            let (raw, ptr) = ShareGuard::into_raw_parts(g);
+
+            match raw.try_upgrade() {
+                Ok(raw) => Ok(crate::exclusive_lock::ExclusiveGuard::from_raw_parts(
+                    raw,
+                    ptr as *mut T,
+                )),
+                Err(raw) => Err(Self::from_raw_parts(raw, ptr)),
+            }
+        }
+    }
+}
+
 impl<L: RawShareLock + RawLockInfo, T: ?Sized, St> Deref for ShareGuard<'_, L, T, St> {
     type Target = T;
 

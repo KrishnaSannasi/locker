@@ -1,4 +1,4 @@
-use super::{RawShareLock, RawShareLockFair};
+use super::{RawShareLock, RawShareLockFair, RawShareLockUpgrade};
 use crate::{Inhabitted, RawLockInfo};
 
 /// A RAII implementation of a scoped shared lock
@@ -129,6 +129,41 @@ impl<L: RawShareLockFair + RawLockInfo> RawShareGuard<'_, L> {
         }
         defer!(self.lock.shr_lock());
         f()
+    }
+}
+
+impl<'a, L: RawShareLockUpgrade + RawLockInfo> RawShareGuard<'a, L>
+where
+    L::ExclusiveGuardTraits: Inhabitted,
+    L::ShareGuardTraits: Inhabitted,
+{
+    /// Atomically upgrades a read lock lock into a exclusive write lock,
+    /// blocking the current thread until it can be acquired.
+    ///
+    /// # Panic
+    ///
+    /// This function may panic if the lock is impossible to acquire
+    pub fn upgrade(self) -> crate::exclusive_lock::RawExclusiveGuard<'a, L> {
+        let lock = self.into_inner();
+        unsafe {
+            lock.upgrade();
+            crate::exclusive_lock::RawExclusiveGuard::from_raw(lock)
+        }
+    }
+
+    /// Attempts to atomically upgrades a read lock lock into a exclusive write lock,
+    /// without blocking or panicking
+    ///
+    /// returns a exclusive guard if successful, otherwise returns the current guard
+    pub fn try_upgrade(self) -> Result<crate::exclusive_lock::RawExclusiveGuard<'a, L>, Self> {
+        let lock = self.into_inner();
+        unsafe {
+            if lock.try_upgrade() {
+                Ok(crate::exclusive_lock::RawExclusiveGuard::from_raw(lock))
+            } else {
+                Err(RawShareGuard::from_raw(lock))
+            }
+        }
     }
 }
 

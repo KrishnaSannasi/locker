@@ -98,9 +98,13 @@ unsafe impl crate::exclusive_lock::RawExclusiveLock for AdaptiveLock {
 
     #[inline]
     fn exc_try_lock(&self) -> bool {
-        self.state
-            .compare_exchange(0, EXC_BIT, Ordering::Acquire, Ordering::Relaxed)
-            .is_ok()
+        let state = self.state.load(Ordering::Relaxed);
+
+        state & (EXC_PARK_BIT | EXC_BIT | READERS) == 0
+            && self
+                .state
+                .compare_exchange(state, state | EXC_BIT, Ordering::Acquire, Ordering::Relaxed)
+                .is_ok()
     }
 
     #[inline]
@@ -256,6 +260,30 @@ unsafe impl RawExclusiveLockDowngrade for AdaptiveLock {
     }
 }
 
+unsafe impl crate::share_lock::RawShareLockUpgrade for AdaptiveLock {
+    unsafe fn upgrade(&self) {
+        if !self.try_upgrade() {
+            self.upgrade_slow(None);
+        }
+    }
+
+    unsafe fn try_upgrade(&self) -> bool {
+        let state = self.state.load(Ordering::Relaxed);
+
+        state & READERS == INC
+            && state & EXC_PARK_BIT == 0
+            && self
+                .state
+                .compare_exchange(
+                    state,
+                    (state - INC) | EXC_BIT,
+                    Ordering::Acquire,
+                    Ordering::Relaxed,
+                )
+                .is_ok()
+    }
+}
+
 impl AdaptiveLock {
     #[cold]
     fn exc_bump_slow(&self, force_fair: bool) {
@@ -325,6 +353,22 @@ impl AdaptiveLock {
         unsafe {
             parking_lot_core::unpark_filter(key, filter, callback);
         }
+    }
+
+    #[cold]
+    fn upgrade_slow(&self, timeout: Option<Instant>) -> bool {
+        let mut state = self.state.load(Ordering::Relaxed);
+
+        while let Err(x) = self.state.compare_exchange_weak(
+            state,
+            (state - INC) | EXC_BIT,
+            Ordering::Acquire,
+            Ordering::Relaxed,
+        ) {
+            state = x;
+        }
+
+        self.wait_for_shared(timeout)
     }
 
     #[cold]
@@ -748,5 +792,13 @@ mod tests {
         drop(lock);
         t.join().unwrap();
         assert_eq!(SEQUENCE.load(Ordering::Relaxed), 2);
+    }
+
+    #[test]
+    fn upgrade() {
+        static SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+        static LOCK: RawRwLock = AdaptiveLock::raw_rwlock();
+
+        let lock = LOCK.read();
     }
 }

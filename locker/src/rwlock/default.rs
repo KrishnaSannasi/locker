@@ -123,6 +123,22 @@ unsafe impl RawShareLock for DefaultLock {
     }
 }
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for DefaultLock {
+    unsafe fn downgrade(&self) {
+        self.0.downgrade()
+    }
+}
+
+unsafe impl crate::share_lock::RawShareLockUpgrade for DefaultLock {
+    unsafe fn upgrade(&self) {
+        self.0.upgrade()
+    }
+
+    unsafe fn try_upgrade(&self) -> bool {
+        self.0.try_upgrade()
+    }
+}
+
 #[cfg(feature = "parking_lot_core")]
 unsafe impl RawShareLockFair for DefaultLock {
     #[inline]

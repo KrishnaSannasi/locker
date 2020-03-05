@@ -132,3 +132,24 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for LocalLock {
         self.state.set(1);
     }
 }
+
+unsafe impl crate::share_lock::RawShareLockUpgrade for LocalLock {
+    unsafe fn upgrade(&self) {
+        assert!(
+            self.try_upgrade(),
+            "Cannot upgrade local shared lock while other local shared locks are active"
+        );
+    }
+
+    unsafe fn try_upgrade(&self) -> bool {
+        let state = self.state.get();
+
+        if state == 1 {
+            self.state.set(EXC_LOCK);
+
+            true
+        } else {
+            false
+        }
+    }
+}

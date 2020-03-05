@@ -66,7 +66,7 @@ pub unsafe trait RawShareLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a shr lock
+    /// * the caller must own a *shr lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_split(&self);
 
@@ -76,7 +76,7 @@ pub unsafe trait RawShareLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a shr lock
+    /// * the caller must own a *shr lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_unlock(&self);
 
@@ -87,7 +87,7 @@ pub unsafe trait RawShareLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *shr lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_bump(&self) {
         self.shr_unlock();
@@ -138,7 +138,7 @@ pub unsafe trait RawShareLockFair: RawShareLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a shr lock
+    /// * the caller must own a *shr lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_unlock_fair(&self);
 
@@ -149,12 +149,52 @@ pub unsafe trait RawShareLockFair: RawShareLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a shr lock
+    /// * the caller must own a *shr lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn shr_bump_fair(&self) {
         self.shr_unlock_fair();
         self.shr_lock();
     }
+}
+
+/// Additional methods for RwLocks which support atomically downgrading an exclusive lock to a shared lock.
+///
+/// # Safety
+///
+/// [`RawShareLockUpgrade::upgrade`] must release a *shr lock* and acquire a *exc lock*
+///
+/// [`RawShareLockUpgrade::try_upgrade`] must release a *shr lock* and acquire a *exc lock* if it return true
+pub unsafe trait RawShareLockUpgrade:
+    RawShareLock + crate::exclusive_lock::RawExclusiveLock
+{
+    /// Atomically upgrade a *shr lock* to a *exc lock*
+    ///
+    /// Blocks until lock is acquired. This is equivalent to `shr_unlock` followed by `exc_lock`.
+    /// But this can be more efficient in the case of no other readers.
+    ///
+    /// This releases a *shr lock* and acquires a *exc lock*
+    ///
+    /// # Panic
+    ///
+    /// This function may panic if the lock is impossible to acquire
+    ///
+    /// # Safety
+    ///
+    /// * the caller must own a *shr lock*
+    /// * the lock must not have been moved since it was locked
+    unsafe fn upgrade(&self);
+
+    /// Attempts to atomically upgrade a *shr lock* to a *exc lock*
+    ///
+    /// If the *exc lock* was acquired, then the *shr lock* is released
+    /// and this function returns true. Otherwise, the *shr lock* is maintained
+    /// and this function returns false.
+    ///
+    /// # Safety
+    ///
+    /// * the caller must own a *shr lock*
+    /// * the lock must not have been moved since it was locked
+    unsafe fn try_upgrade(&self) -> bool;
 }
 
 // unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &L {

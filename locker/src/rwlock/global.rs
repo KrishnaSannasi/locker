@@ -237,6 +237,22 @@ unsafe impl crate::share_lock::RawShareLockTimed for GlobalLock {
     }
 }
 
+unsafe impl crate::exclusive_lock::RawExclusiveLockDowngrade for GlobalLock {
+    unsafe fn downgrade(&self) {
+        self.get().downgrade()
+    }
+}
+
+unsafe impl crate::share_lock::RawShareLockUpgrade for GlobalLock {
+    unsafe fn upgrade(&self) {
+        self.get().upgrade()
+    }
+
+    unsafe fn try_upgrade(&self) -> bool {
+        self.get().try_upgrade()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

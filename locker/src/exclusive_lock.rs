@@ -6,7 +6,7 @@ mod guard;
 mod raw;
 
 pub use guard::{ExclusiveGuard, MappedExclusiveGuard};
-pub use raw::RawExclusiveGuard;
+pub use raw::{RawExclusiveGuard, _RawExclusiveGuard};
 
 #[cfg(doc)]
 use crate::RawLockInfo;
@@ -67,7 +67,7 @@ pub unsafe trait RawExclusiveLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *exc lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_unlock(&self);
 
@@ -78,7 +78,7 @@ pub unsafe trait RawExclusiveLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *exc lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_bump(&self) {
         self.exc_unlock();
@@ -124,7 +124,7 @@ pub unsafe trait SplittableExclusiveLock: RawExclusiveLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *exc lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_split(&self);
 }
@@ -148,7 +148,7 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *exc lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_unlock_fair(&self);
 
@@ -159,7 +159,7 @@ pub unsafe trait RawExclusiveLockFair: RawExclusiveLock {
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *exc lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn exc_bump_fair(&self) {
         self.exc_unlock_fair();
@@ -185,7 +185,7 @@ pub unsafe trait RawExclusiveLockDowngrade:
     ///
     /// # Safety
     ///
-    /// * the caller must own a exclusive lock
+    /// * the caller must own a *exc lock*
     /// * the lock must not have been moved since it was locked
     unsafe fn downgrade(&self);
 }

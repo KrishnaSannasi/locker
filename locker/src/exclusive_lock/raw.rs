@@ -142,10 +142,22 @@ where
     /// Atomically downgrades a write lock into a read lock without allowing
     /// any writers to take exclusive access of the lock in the meantime.
     pub fn downgrade(self) -> crate::share_lock::RawShareGuard<'a, L> {
-        let g = std::mem::ManuallyDrop::new(self);
+        self.into()
+    }
+}
+
+impl<'a, L: RawExclusiveLockDowngrade + RawLockInfo> From<RawExclusiveGuard<'a, L>>
+    for crate::share_lock::RawShareGuard<'a, L>
+where
+    L::ShareGuardTraits: Inhabitted,
+{
+    /// Atomically downgrades a write lock into a read lock without allowing
+    /// any writers to take exclusive access of the lock in the meantime.
+    fn from(g: RawExclusiveGuard<'a, L>) -> Self {
+        let lock = g.into_inner();
         unsafe {
-            g.lock.downgrade();
-            crate::share_lock::RawShareGuard::from_raw(g.lock)
+            lock.downgrade();
+            crate::share_lock::RawShareGuard::from_raw(lock)
         }
     }
 }
