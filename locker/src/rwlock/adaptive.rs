@@ -256,6 +256,8 @@ unsafe impl RawExclusiveLockDowngrade for AdaptiveLock {
 
         if state & PARK_BIT != 0 {
             self.unpark_shared();
+            self.state
+                .fetch_and(!(EXC_BIT | EXC_PARK_BIT), Ordering::Relaxed);
         }
     }
 }
@@ -368,8 +370,7 @@ impl AdaptiveLock {
         let callback = |_| {
             let count = count.get();
             let state = self.state.fetch_add(count, Ordering::Acquire);
-            self.state
-                .fetch_and(!(EXC_BIT | EXC_PARK_BIT), Ordering::Relaxed);
+
             debug_assert!(state.checked_add(count).is_some());
             TOKEN_HANDOFF_SHARED
         };
@@ -382,11 +383,14 @@ impl AdaptiveLock {
     #[cold]
     fn upgrade_slow(&self, timeout: Option<Instant>) -> bool {
         self.state.fetch_or(EXC_BIT, Ordering::Acquire);
+        self.state.fetch_sub(INC, Ordering::Acquire);
 
-        let has_upgraded = self.wait_for_shared(1, timeout);
+        let has_upgraded = self.wait_for_shared(0, timeout);
 
-        if has_upgraded {
-            self.state.fetch_sub(INC, Ordering::Relaxed);
+        if !has_upgraded {
+            self.state.fetch_add(INC, Ordering::Relaxed);
+            self.state
+                .fetch_and(!(EXC_BIT | EXC_PARK_BIT), Ordering::Relaxed);
         }
 
         has_upgraded
@@ -814,9 +818,27 @@ mod tests {
 
     #[test]
     fn upgrade() {
-        static SEQUENCE: AtomicUsize = AtomicUsize::new(0);
         static LOCK: RawRwLock = AdaptiveLock::raw_rwlock();
 
+        let wait = WaitGroup::new();
         let lock = LOCK.read();
+
+        let t = std::thread::spawn({
+            let wait = wait.clone();
+
+            move || {
+                let lock = LOCK.read();
+                wait.wait();
+                let lock = lock.upgrade();
+                drop(lock);
+            }
+        });
+
+        wait.wait();
+        std::thread::sleep(std::time::Duration::from_micros(10));
+
+        drop(lock);
+
+        t.join().unwrap();
     }
 }
