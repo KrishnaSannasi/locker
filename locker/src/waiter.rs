@@ -84,8 +84,6 @@ impl<T> Waiter<T> {
     #[inline(always)]
     #[allow(clippy::unnecessary_operation)]
     pub const unsafe fn with_value(value: T) -> Self {
-        [()][(std::mem::size_of::<T>() == 0) as usize];
-
         Self {
             inner: value,
             _private: (),
@@ -209,10 +207,10 @@ impl<T: ?Sized> Waiter<T> {
     }
 }
 
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+mod arc;
+use arc::Arc;
 
 pub struct WaitGroup(Arc<Waiter<AtomicUsize>>);
 

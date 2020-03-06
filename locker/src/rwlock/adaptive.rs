@@ -576,7 +576,14 @@ impl AdaptiveLock {
         let exclusive = || true;
         let shared = || {
             if self.state.fetch_sub(INC, Ordering::Relaxed) & PARK_BIT != 0 {
-                self.wait_for_shared(0, timeout)
+                let success = self.wait_for_shared(0, timeout);
+
+                if !success {
+                    self.state
+                        .fetch_and(!(EXC_BIT | EXC_PARK_BIT), Ordering::Relaxed);
+                }
+
+                success
             } else {
                 true
             }

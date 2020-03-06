@@ -1,7 +1,7 @@
 use std::cell::UnsafeCell;
-use std::num::NonZeroUsize;
 
-use crate::share_lock::{RawShareLock, RawShareLockTimed, ShareGuard};
+use crate::share_lock::ShareGuard;
+use locker::remutex::RawReentrantMutex;
 
 #[cfg(feature = "extra")]
 pub mod simple;
@@ -14,19 +14,6 @@ pub mod global;
 
 pub mod raw;
 
-/// # Safety
-///
-/// Implementations of this trait must ensure that no two active threads share
-/// the same thread ID. However the ID of a thread that has exited can be re-used
-/// since that thread is no longer active.
-pub unsafe trait ThreadInfo {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self;
-
-    fn id(&self) -> NonZeroUsize;
-}
-
-pub unsafe trait RawReentrantMutex: crate::RawLockInfo + RawShareLock {}
 #[repr(C)]
 pub struct ReentrantMutex<L, T: ?Sized> {
     raw: raw::ReentrantMutex<L>,
@@ -101,12 +88,12 @@ impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::ReentrantMutex::from_raw(L::INIT), value) }
+                Self::from_raw_parts(raw::ReentrantMutex::new(), value)
             }
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::ReentrantMutex::from_raw(L::INIT), value) }
+                Self::from_raw_parts(raw::ReentrantMutex::new(), value)
             }
         }
     }
@@ -114,36 +101,20 @@ impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
 
 impl<L: RawReentrantMutex, T: ?Sized> ReentrantMutex<L, T>
 where
-    L::ShareGuardTraits: crate::Inhabitted,
+    L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
-    fn wrap<'s>(&'s self, raw: crate::share_lock::RawShareGuard<'s, L>) -> ShareGuard<'s, L, T> {
-        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
-        unsafe { ShareGuard::from_raw_parts(raw, self.value.get()) }
-    }
-
-    #[inline]
-    pub fn lock(&self) -> ShareGuard<'_, L, T> {
-        self.wrap(self.raw.lock())
+    pub async fn lock(&self) -> ShareGuard<'_, L, T> {
+        unsafe { ShareGuard::from_raw_parts(self.raw.lock().await, self.value.get()) }
     }
 
     #[inline]
     pub fn try_lock(&self) -> Option<ShareGuard<'_, L, T>> {
-        Some(self.wrap(self.raw.try_lock()?))
-    }
-}
-
-impl<L: RawReentrantMutex + RawShareLockTimed, T: ?Sized> ReentrantMutex<L, T>
-where
-    L::ShareGuardTraits: crate::Inhabitted,
-{
-    #[inline]
-    pub fn try_lock_until(&self, instant: L::Instant) -> Option<ShareGuard<'_, L, T>> {
-        Some(self.wrap(self.raw.try_lock_until(instant)?))
-    }
-
-    #[inline]
-    pub fn try_lock_for(&self, duration: L::Duration) -> Option<ShareGuard<'_, L, T>> {
-        Some(self.wrap(self.raw.try_lock_for(duration)?))
+        unsafe {
+            Some(ShareGuard::from_raw_parts(
+                self.raw.try_lock()?,
+                self.value.get(),
+            ))
+        }
     }
 }

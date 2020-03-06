@@ -9,7 +9,7 @@ macro_rules! defer {
 mod defer;
 pub mod exclusive_lock;
 pub mod mutex;
-pub mod reentrant;
+pub mod remutex;
 pub mod rwlock;
 pub mod share_lock;
 mod slab;

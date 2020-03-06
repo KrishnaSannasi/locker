@@ -3,7 +3,7 @@ use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
 use crate::mutex::RawMutex;
-use crate::reentrant::ThreadInfo;
+use crate::remutex::ThreadInfo;
 use crate::rwlock::RawRwLock;
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -13,7 +13,7 @@ cfg_if::cfg_if! {
         /// Wraps a lock and panics on reentrant exclusive lock, leaves the
         /// share lock untouched
         #[derive(Debug)]
-        pub struct ReentrantPanic<L: ?Sized, I = crate::reentrant::std_thread::StdThreadInfo> {
+        pub struct ReentrantPanic<L: ?Sized, I = crate::remutex::std_thread::StdThreadInfo> {
             owner: AtomicUsize,
             thread_info: I,
             inner: L,

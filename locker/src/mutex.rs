@@ -161,7 +161,7 @@ where
 
     /// Acquires a mutex, blocking the current thread until it is able to do so.
     ///
-    /// This function will block the local thread until it is available to acquire
+    /// This function will block the current thread until it is available to acquire
     /// the mutex. Upon returning, the thread is the only thread with the mutex held.
     /// An RAII guard is returned to allow scoped unlock of the lock. When the guard
     /// goes out of scope, the mutex will be unlocked.

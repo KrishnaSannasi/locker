@@ -1,5 +1,8 @@
+//! Thread info based on thread local
+
 use std::num::NonZeroUsize;
 
+/// Gives the current thread's id based on a thread local
 pub struct StdThreadInfo;
 
 unsafe impl super::ThreadInfo for StdThreadInfo {

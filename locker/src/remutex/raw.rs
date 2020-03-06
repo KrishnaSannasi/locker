@@ -1,27 +1,28 @@
-//! A type-safe implementation of a `Mutex`
+//! a raw reentrant mutex
 
-use crate::exclusive_lock::{RawExclusiveGuard, RawExclusiveLockTimed};
-use crate::mutex::RawMutex;
+use super::RawReentrantMutex;
+use crate::share_lock::{RawShareGuard, RawShareLockTimed};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
-/// This mutex will block threads waiting for the lock to become available.
-/// The mutex can also be statically initialized or created via a `from_raw` constructor.
-#[repr(transparent)]
-pub struct Mutex<L> {
+/// This reentrant mutex will block threads waiting for the lock to become available.
+/// The reentrant mutex can also be statically initialized or created via the `from_raw` constructor.
+///
+/// Each lock can only be used in a single thread, and the reentrant mutex can be locked as many times
+/// within a single thread. But two threads can't both hold a lock into the reentrant mutex as the same time.
+#[repr(C)]
+pub struct ReentrantMutex<L> {
     lock: L,
 }
 
-impl<L: RawMutex> Default for Mutex<L> {
+impl<L: RawReentrantMutex> Default for ReentrantMutex<L> {
     #[inline]
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<L> Mutex<L> {
-    /// Create a new raw mutex
-    ///
+impl<L> ReentrantMutex<L> {
     /// # Safety
     ///
     /// You must pass `RawLockInfo::INIT` as lock
@@ -30,7 +31,7 @@ impl<L> Mutex<L> {
         Self { lock }
     }
 
-    /// consume the mutex and returning the underlying lock
+    /// Consumes this reentrant mutex, returning the underlying lock
     #[inline]
     pub fn into_inner(self) -> L {
         self.lock
@@ -67,16 +68,16 @@ impl<L> Mutex<L> {
     }
 }
 
-impl<L: RawMutex> Mutex<L> {
+impl<L: RawReentrantMutex> ReentrantMutex<L> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
-            /// Create a new raw mutex
+            /// Create a new raw reentrant mutex
             #[inline]
             pub const fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
+                unsafe { Self::from_raw_parts(L::INIT) }
             }
         } else {
-            /// Create a new raw mutex
+            /// Create a new raw reentrant mutex
             #[inline]
             pub fn new() -> Self {
                 unsafe { Self::from_raw(L::INIT) }
@@ -85,12 +86,13 @@ impl<L: RawMutex> Mutex<L> {
     }
 }
 
-impl<L: RawMutex> Mutex<L>
+impl<L: RawReentrantMutex> ReentrantMutex<L>
 where
-    L::ExclusiveGuardTraits: crate::Inhabitted,
+    L::ShareGuardTraits: crate::Inhabitted,
 {
-    unsafe fn lock_unchecked(&self) -> RawExclusiveGuard<'_, L> {
-        RawExclusiveGuard::from_raw(&self.lock)
+    #[inline]
+    unsafe fn lock_unchecked(&self) -> RawShareGuard<'_, L> {
+        RawShareGuard::from_raw(&self.lock)
     }
 
     /// Acquires a lock, blocking the current thread until it is able to do so.
@@ -100,16 +102,16 @@ where
     /// An RAII guard is returned to allow scoped unlock of the lock. When the guard
     /// goes out of scope, the mutex will be unlocked.
     ///
-    /// Attempts to lock a `Mutex` in the thread which already holds the lock will result in a deadlock or panic.
+    /// If there is already a lock acquired in the current thread, then this function is non-blocking
+    /// and is guaranteed to acquire the lock.
     ///
     /// # Panic
     ///
-    /// This function may panic if it is impossible to acquire the lock (in the case of deadlock or
-    /// single threaded mutex)
+    /// This function may panic if it is impossible to acquire the lock (in the case of deadlock)
     #[inline]
-    pub fn lock(&self) -> RawExclusiveGuard<'_, L> {
+    pub fn lock(&self) -> RawShareGuard<'_, L> {
         unsafe {
-            self.lock.exc_lock();
+            self.lock.shr_lock();
             self.lock_unchecked()
         }
     }
@@ -119,10 +121,11 @@ where
     /// If the lock could not be acquired at this time, then None is returned.
     /// Otherwise, an RAII guard is returned. The lock will be unlocked when the guard is dropped.
     ///
-    /// This function does not block.
+    /// If there is already a lock acquired in the current thread, then this function is non-blocking
+    /// and is guaranteed to acquire the lock.
     #[inline]
-    pub fn try_lock(&self) -> Option<RawExclusiveGuard<'_, L>> {
-        if self.lock.exc_try_lock() {
+    pub fn try_lock(&self) -> Option<RawShareGuard<'_, L>> {
+        if self.lock.shr_try_lock() {
             unsafe { Some(self.lock_unchecked()) }
         } else {
             None
@@ -130,18 +133,21 @@ where
     }
 }
 
-impl<L: RawMutex + RawExclusiveLockTimed> Mutex<L>
+impl<L: RawReentrantMutex + RawShareLockTimed> ReentrantMutex<L>
 where
-    L::ExclusiveGuardTraits: crate::Inhabitted,
+    L::ShareGuardTraits: crate::Inhabitted,
 {
     /// Attempts to acquire this lock until a timeout is reached.
     ///
     /// If the lock could not be acquired before the timeout expired,
     /// then None is returned. Otherwise, an RAII guard is returned.
     /// The lock will be unlocked when the guard is dropped.
+    ///
+    /// If there is already a lock acquired in the current thread, then this function is non-blocking
+    /// and is guaranteed to acquire the lock.
     #[inline]
-    pub fn try_lock_until(&self, instant: L::Instant) -> Option<RawExclusiveGuard<'_, L>> {
-        if self.lock.exc_try_lock_until(instant) {
+    pub fn try_lock_until(&self, instant: L::Instant) -> Option<RawShareGuard<'_, L>> {
+        if self.lock.shr_try_lock_until(instant) {
             unsafe { Some(self.lock_unchecked()) }
         } else {
             None
@@ -153,9 +159,12 @@ where
     /// If the lock could not be acquired before the timeout expired,
     /// then None is returned. Otherwise, an RAII guard is returned.
     /// The lock will be unlocked when the guard is dropped.
+    ///
+    /// If there is already a lock acquired in the current thread, then this function is non-blocking
+    /// and is guaranteed to acquire the lock.
     #[inline]
-    pub fn try_lock_for(&self, duration: L::Duration) -> Option<RawExclusiveGuard<'_, L>> {
-        if self.lock.exc_try_lock_for(duration) {
+    pub fn try_lock_for(&self, duration: L::Duration) -> Option<RawShareGuard<'_, L>> {
+        if self.lock.shr_try_lock_for(duration) {
             unsafe { Some(self.lock_unchecked()) }
         } else {
             None

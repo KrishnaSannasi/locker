@@ -90,8 +90,8 @@ pub mod exclusive_lock;
 pub mod mutex;
 #[allow(missing_docs)]
 pub mod once; // 68
-#[allow(missing_docs)]
-pub mod reentrant; // 38
+              // #[allow(missing_docs)]
+pub mod remutex;
 pub mod rwlock;
 pub mod share_lock;
 mod spin_wait;
@@ -104,11 +104,6 @@ pub mod marker;
 #[allow(missing_docs)]
 #[cfg(feature = "parking_lot_core")]
 pub mod waiter; // 25
-
-// #[cfg(feature = "extra")]
-// pub mod prelude {
-
-// }
 
 pub use guard::{Mapped, Pure, TryMapError};
 use marker::*;

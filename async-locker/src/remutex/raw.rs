@@ -1,6 +1,6 @@
 use super::RawReentrantMutex;
 use crate::{share_lock::RawShareGuard, waker_set::WakerSet};
-use locker::reentrant::raw;
+use locker::remutex::raw;
 
 #[repr(C)]
 pub struct ReentrantMutex<L> {

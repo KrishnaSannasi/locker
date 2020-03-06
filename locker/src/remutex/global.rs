@@ -1,32 +1,44 @@
+//! A global reentrant mutex
+
 use crate::mutex::default::DefaultLock;
 use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
+/// A global lock set that uses the a [`ReLock`](crate::reentrant::lock::ReLock)
+/// supplied with the [default mutex lock](crate::mutex::default)
+/// and the std thread info [`StdThreadInfo`](crate::reentrant::std_thread::StdThreadInfo)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Global;
 
-pub type RawReentrantMutex = crate::reentrant::raw::ReentrantMutex<Global>;
-pub type ReentrantMutex<T> = crate::reentrant::ReentrantMutex<Global, T>;
+/// a global raw reentrant mutex
+pub type RawReentrantMutex = crate::remutex::raw::ReentrantMutex<Global>;
+/// a global reentrant mutex
+pub type ReentrantMutex<T> = crate::remutex::ReentrantMutex<Global, T>;
 
 impl Global {
+    /// Create a new global raw reentrant mutex
     pub const fn raw_remutex() -> RawReentrantMutex {
         unsafe { RawReentrantMutex::from_raw(Self) }
     }
 
+    /// Create a new global reentrant mutex
     pub const fn remutex<T>(value: T) -> ReentrantMutex<T> {
         ReentrantMutex::from_raw_parts(Self::raw_remutex(), value)
     }
 
+    /// Create a new global reentrant mutex
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn remutex_from_mut<T: ?Sized>(value: &mut T) -> &mut ReentrantMutex<T> {
         unsafe { std::mem::transmute(value) }
     }
 
+    /// Create a new global reentrant mutex
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn remutex_from_mut_slice<T>(value: &mut [T]) -> &mut [ReentrantMutex<T>] {
         unsafe { std::mem::transmute(value) }
     }
 
+    /// Transpose a global reentrant mutex containing a slice into a slice of reentrant global mutexes
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn remutex_transpose<T>(value: &mut ReentrantMutex<[T]>) -> &mut [ReentrantMutex<T>] {
         unsafe { std::mem::transmute(value) }
@@ -38,12 +50,20 @@ impl Global {
         (self as *const _ as usize) % GLOBAL.len()
     }
 
+    #[inline(always)]
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    fn get(&self) -> &'static ReLock {
+        &GLOBAL[self.addr()]
+    }
+
+    /// Checks if two global locks will contend
     #[inline]
     #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn will_contend(&self, other: &Self) -> bool {
         self.addr() == other.addr()
     }
 
+    /// Checks if two global reentrant mutexes will contend
     #[inline]
     pub fn will_remutex_contend<T: ?Sized, U: ?Sized>(
         a: &ReentrantMutex<T>,
@@ -53,7 +73,7 @@ impl Global {
     }
 }
 
-type ReLock = crate::reentrant::simple::RawReentrantLock<DefaultLock>;
+type ReLock = crate::remutex::lock::ReLock<DefaultLock>;
 
 macro_rules! new {
     () => {
@@ -88,7 +108,7 @@ static GLOBAL: [ReLock; 61] = [
     new!(),
 ];
 
-unsafe impl crate::reentrant::RawReentrantMutex for Global {}
+unsafe impl crate::remutex::RawReentrantMutex for Global {}
 unsafe impl RawLockInfo for Global {
     const INIT: Self = Self;
 
@@ -99,27 +119,27 @@ unsafe impl RawLockInfo for Global {
 unsafe impl RawShareLock for Global {
     #[inline]
     fn shr_lock(&self) {
-        GLOBAL[self.addr()].shr_lock()
+        self.get().shr_lock()
     }
 
     #[inline]
     fn shr_try_lock(&self) -> bool {
-        GLOBAL[self.addr()].shr_try_lock()
+        self.get().shr_try_lock()
     }
 
     #[inline]
     unsafe fn shr_split(&self) {
-        GLOBAL[self.addr()].shr_split()
+        self.get().shr_split()
     }
 
     #[inline]
     unsafe fn shr_unlock(&self) {
-        GLOBAL[self.addr()].shr_unlock()
+        self.get().shr_unlock()
     }
 
     #[inline]
     unsafe fn shr_bump(&self) {
-        GLOBAL[self.addr()].shr_bump()
+        self.get().shr_bump()
     }
 }
 
@@ -127,11 +147,30 @@ unsafe impl RawShareLock for Global {
 unsafe impl RawShareLockFair for Global {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
-        GLOBAL[self.addr()].shr_unlock_fair()
+        self.get().shr_unlock_fair()
     }
 
     #[inline]
     unsafe fn shr_bump_fair(&self) {
-        GLOBAL[self.addr()].shr_bump_fair()
+        self.get().shr_bump_fair()
+    }
+}
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::RawTimedLock for Global {
+    type Instant = std::time::Instant;
+    type Duration = std::time::Duration;
+}
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::share_lock::RawShareLockTimed for Global {
+    #[inline]
+    fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
+        self.get().shr_try_lock_until(instant)
+    }
+
+    #[inline]
+    fn shr_try_lock_for(&self, duration: Self::Duration) -> bool {
+        self.get().shr_try_lock_for(duration)
     }
 }

@@ -5,7 +5,7 @@ use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
 use crate::mutex::RawMutex;
-use crate::reentrant::RawReentrantMutex;
+use crate::remutex::RawReentrantMutex;
 use crate::rwlock::RawRwLock;
 
 /// Wraps a lock and always calls `*unlock_fair` or `*bump_fair` instead of `*unlock` or `*bump`
