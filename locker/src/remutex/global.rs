@@ -77,7 +77,13 @@ type ReLock = crate::remutex::lock::ReLock<DefaultLock>;
 
 macro_rules! new {
     () => {
-        unsafe { ReLock::from_raw_parts(DefaultLock::new(), super::std_thread::StdThreadInfo) }
+        unsafe {
+            ReLock::from_raw_parts(
+                DefaultLock::new(),
+                super::ThreadInfo::INIT,
+                super::counter::Scalar::ZERO,
+            )
+        }
     };
 }
 
@@ -157,7 +163,7 @@ unsafe impl RawShareLockFair for Global {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::RawTimedLock for Global {
+impl crate::RawTimedLock for Global {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }

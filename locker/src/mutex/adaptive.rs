@@ -242,7 +242,7 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockFair for AdaptiveLock {
     }
 }
 
-unsafe impl crate::RawTimedLock for AdaptiveLock {
+impl crate::RawTimedLock for AdaptiveLock {
     type Instant = Instant;
     type Duration = Duration;
 }

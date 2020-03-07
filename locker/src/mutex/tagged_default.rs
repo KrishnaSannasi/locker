@@ -142,7 +142,7 @@ unsafe impl RawExclusiveLockFair for TaggedDefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::RawTimedLock for TaggedDefaultLock {
+impl crate::RawTimedLock for TaggedDefaultLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }

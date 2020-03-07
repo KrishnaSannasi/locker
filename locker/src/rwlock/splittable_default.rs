@@ -137,7 +137,7 @@ unsafe impl RawShareLockFair for SplitDefaultLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::RawTimedLock for SplitDefaultLock {
+impl crate::RawTimedLock for SplitDefaultLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }

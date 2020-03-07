@@ -638,7 +638,7 @@ impl SplitLock {
     }
 }
 
-unsafe impl crate::RawTimedLock for SplitLock {
+impl crate::RawTimedLock for SplitLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }

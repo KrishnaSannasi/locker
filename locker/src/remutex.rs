@@ -8,6 +8,9 @@ use crate::share_lock::{RawShareLock, RawShareLockTimed, ShareGuard};
 #[cfg(feature = "extra")]
 pub mod lock;
 
+#[cfg(feature = "extra")]
+pub mod counter;
+
 #[cfg(feature = "std")]
 pub mod std_thread;
 

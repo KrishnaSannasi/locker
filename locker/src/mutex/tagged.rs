@@ -370,7 +370,7 @@ impl TaggedLock {
     }
 }
 
-unsafe impl crate::RawTimedLock for TaggedLock {
+impl crate::RawTimedLock for TaggedLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }

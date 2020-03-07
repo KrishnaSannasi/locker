@@ -7,17 +7,17 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair, RawExclusiveLockTimed};
 use crate::share_lock::{RawShareLock, RawShareLockFair, RawShareLockTimed};
 
-use super::ThreadInfo;
+use super::{counter::Scalar, ThreadInfo};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "std")] {
         /// A wrapper around a [`RawExclusiveLock`] that allows it to be used as a
         /// reentrant mutex
-        pub struct ReLock<L, I = super::std_thread::StdThreadInfo> {
+        pub struct ReLock<L, S = super::counter::SubWord, I = super::std_thread::StdThreadInfo> {
             inner: L,
             thread_info: I,
             owner: AtomicUsize,
-            count: Cell<usize>,
+            count: Cell<S>,
         }
     } else {
         /// A wrapper around a [`RawExclusiveLock`] that allows it to be used as a
@@ -31,19 +31,19 @@ cfg_if::cfg_if! {
     }
 }
 
-unsafe impl<L: Sync + crate::mutex::RawMutex, I: Sync> Sync for ReLock<L, I> {}
+unsafe impl<L: Sync + crate::mutex::RawMutex, S: Send, I: Sync> Sync for ReLock<L, S, I> {}
 
-impl<L, I> ReLock<L, I> {
+impl<L, I, S> ReLock<L, S, I> {
     /// # Safety
     ///
     /// `inner` must not be shared
     #[inline]
-    pub const unsafe fn from_raw_parts(inner: L, thread_info: I) -> Self {
+    pub const unsafe fn from_raw_parts(inner: L, thread_info: I, counter: S) -> Self {
         Self {
             inner,
             thread_info,
             owner: AtomicUsize::new(0),
-            count: Cell::new(0),
+            count: Cell::new(counter),
         }
     }
 
@@ -58,15 +58,21 @@ impl<L, I> ReLock<L, I> {
     }
 }
 
-unsafe impl<L: crate::mutex::RawMutex, I: ThreadInfo> super::RawReentrantMutex for ReLock<L, I> {}
-unsafe impl<L: crate::RawLockInfo, I: ThreadInfo> crate::RawLockInfo for ReLock<L, I> {
-    const INIT: Self = unsafe { Self::from_raw_parts(L::INIT, I::INIT) };
+unsafe impl<L: crate::mutex::RawMutex, S: Scalar, I: ThreadInfo> super::RawReentrantMutex
+    for ReLock<L, S, I>
+{
+}
+
+unsafe impl<L: crate::RawLockInfo, S: Scalar, I: ThreadInfo> crate::RawLockInfo
+    for ReLock<L, S, I>
+{
+    const INIT: Self = unsafe { Self::from_raw_parts(L::INIT, I::INIT, S::ZERO) };
 
     type ExclusiveGuardTraits = std::convert::Infallible;
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 
-impl<L: RawExclusiveLock, I: ThreadInfo> ReLock<L, I> {
+impl<L: RawExclusiveLock, S: Scalar, I: ThreadInfo> ReLock<L, S, I> {
     #[inline]
     fn lock_internal(&self, try_lock: impl FnOnce() -> bool) -> bool {
         let id = self.thread_info.id().get();
@@ -80,7 +86,6 @@ impl<L: RawExclusiveLock, I: ThreadInfo> ReLock<L, I> {
             }
 
             self.owner.store(id, Ordering::Relaxed);
-            debug_assert_eq!(self.count.get(), 0);
         }
 
         true
@@ -88,8 +93,8 @@ impl<L: RawExclusiveLock, I: ThreadInfo> ReLock<L, I> {
 
     #[inline]
     fn unlock_internal(&self, unlock_slow: impl FnOnce()) {
-        if let Some(count) = self.count.get().checked_sub(1) {
-            self.count.set(count);
+        if let Some(count) = self.count.get().to_usize().checked_sub(1) {
+            self.count.set(S::from_usize_unchecked(count));
         } else {
             self.owner.store(0, Ordering::Relaxed);
             unlock_slow()
@@ -97,7 +102,7 @@ impl<L: RawExclusiveLock, I: ThreadInfo> ReLock<L, I> {
     }
 }
 
-unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for ReLock<L, I> {
+unsafe impl<L: RawExclusiveLock, S: Scalar, I: ThreadInfo> RawShareLock for ReLock<L, S, I> {
     #[inline]
     fn shr_lock(&self) {
         self.lock_internal(|| {
@@ -113,20 +118,13 @@ unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for ReLock<L, I> {
 
     #[inline]
     unsafe fn shr_split(&self) {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(
-                self.owner.load(Ordering::Relaxed),
-                self.thread_info.id().get()
-            );
-        }
-
-        self.count.set(
-            self.count
-                .get()
-                .checked_add(1)
-                .expect("tried to create too many reentrant locks"),
+        debug_assert_eq!(
+            self.owner.load(Ordering::Relaxed),
+            self.thread_info.id().get()
         );
+        let (count, ovf) = self.count.get().to_usize().overflowing_add(1);
+        assert!(!ovf && S::is_in_bounds(count), "Cannot overflow");
+        self.count.set(S::from_usize_unchecked(count));
     }
 
     #[inline]
@@ -139,13 +137,15 @@ unsafe impl<L: RawExclusiveLock, I: ThreadInfo> RawShareLock for ReLock<L, I> {
 
     #[inline]
     unsafe fn shr_bump(&self) {
-        if self.count.get() == 0 {
+        if self.count.get().to_usize() == 0 {
             self.inner.exc_bump();
         }
     }
 }
 
-unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for ReLock<L, I> {
+unsafe impl<L: RawExclusiveLockFair, S: Scalar, I: ThreadInfo> RawShareLockFair
+    for ReLock<L, S, I>
+{
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
         self.unlock_internal(
@@ -156,18 +156,20 @@ unsafe impl<L: RawExclusiveLockFair, I: ThreadInfo> RawShareLockFair for ReLock<
 
     #[inline]
     unsafe fn shr_bump_fair(&self) {
-        if self.count.get() == 0 {
+        if self.count.get().to_usize() == 0 {
             self.inner.exc_bump_fair();
         }
     }
 }
 
-unsafe impl<L: crate::RawTimedLock, I: ThreadInfo> crate::RawTimedLock for ReLock<L, I> {
+impl<L: crate::RawTimedLock, S: Scalar, I: ThreadInfo> crate::RawTimedLock for ReLock<L, S, I> {
     type Instant = L::Instant;
     type Duration = L::Duration;
 }
 
-unsafe impl<L: RawExclusiveLockTimed, I: ThreadInfo> RawShareLockTimed for ReLock<L, I> {
+unsafe impl<L: RawExclusiveLockTimed, S: Scalar, I: ThreadInfo> RawShareLockTimed
+    for ReLock<L, S, I>
+{
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.lock_internal(|| self.inner.exc_try_lock_until(instant))
     }

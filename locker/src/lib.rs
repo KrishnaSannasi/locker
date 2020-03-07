@@ -76,7 +76,7 @@ pub unsafe trait RawLockInfo {
 ///
 /// The `Duration` and `Instant` types are specified as associated types so that
 /// this trait is usable even in no_std environments.
-pub unsafe trait RawTimedLock: RawLockInfo {
+pub trait RawTimedLock: RawLockInfo {
     /// Instant type used for `try_lock_until`.
     type Instant;
 

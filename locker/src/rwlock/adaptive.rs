@@ -200,7 +200,7 @@ unsafe impl crate::share_lock::RawShareLockFair for AdaptiveLock {
     }
 }
 
-unsafe impl crate::RawTimedLock for AdaptiveLock {
+impl crate::RawTimedLock for AdaptiveLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }

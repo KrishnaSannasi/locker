@@ -139,7 +139,7 @@ unsafe impl RawExclusiveLockFair for GlobalLock {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::RawTimedLock for GlobalLock {
+impl crate::RawTimedLock for GlobalLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }
