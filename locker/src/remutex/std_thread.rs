@@ -16,6 +16,6 @@ unsafe impl super::ThreadInfo for StdThreadInfo {
             static IDS: MaybeUninit<u8> = MaybeUninit::uninit();
         }
 
-        IDS.with(|x| unsafe { NonZeroUsize::new_unchecked(x as *const MaybeUninit<u8> as usize + 0) })
+        IDS.with(|x| unsafe { NonZeroUsize::new_unchecked(x as *const MaybeUninit<u8> as usize) })
     }
 }
