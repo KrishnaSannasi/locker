@@ -13,67 +13,84 @@ pub unsafe trait Scalar: Copy {
     fn from_usize_unchecked(_: usize) -> Self;
 }
 
-#[cfg(target_pointer_width = "16")]
-const SUB_WORD_COUNT: usize = 1;
-
-#[cfg(target_pointer_width = "32")]
-const SUB_WORD_COUNT: usize = 3;
-
-#[cfg(target_pointer_width = "64")]
-const SUB_WORD_COUNT: usize = 7;
+const WORD_SIZE: usize = std::mem::size_of::<usize>();
+const SUB_WORD_SIZE: usize = WORD_SIZE - 1;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SubWord([u8; SUB_WORD_COUNT]);
+pub struct SubWord([u8; SUB_WORD_SIZE]);
 
 unsafe impl Scalar for SubWord {
-    const ZERO: Self = Self([0; SUB_WORD_COUNT]);
+    const ZERO: Self = Self([0; SUB_WORD_SIZE]);
 
     fn to_usize(self) -> usize {
         let Self(bytes) = self;
-        #[cfg(target_pointer_width = "16")]
-        {
-            usize::from_le_bytes([bytes[0], 0])
-        }
 
-        #[cfg(target_pointer_width = "32")]
-        {
-            usize::from_le_bytes([bytes[0], bytes[1], bytes[2], 0])
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        {
-            usize::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], 0,
-            ])
-        }
+        bytes.to_usize()
     }
 
     fn is_in_bounds(word: usize) -> bool {
-        word < 1 << (SUB_WORD_COUNT * 8)
+        <[u8; SUB_WORD_SIZE] as Scalar>::is_in_bounds(word)
     }
 
     fn from_usize_unchecked(word: usize) -> Self {
-        #[cfg(target_pointer_width = "16")]
-        {
-            let bytes = word.to_le_bytes();
-            assert!(bytes[2] == 0, "Cannot overflow");
-            Self([bytes[0]])
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        {
-            let bytes = word.to_le_bytes();
-            assert!(bytes[3] == 0, "Cannot overflow");
-            Self([bytes[0], bytes[1], bytes[2]])
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        {
-            let bytes = word.to_le_bytes();
-            assert!(bytes[7] == 0, "Cannot overflow");
-            Self([
-                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
-            ])
-        }
+        Self(<[u8; SUB_WORD_SIZE] as Scalar>::from_usize_unchecked(word))
     }
 }
+
+macro_rules! integers {
+    ($($int:ident)*) => {$(
+        unsafe impl Scalar for $int {
+            const ZERO: Self = 0;
+
+            fn to_usize(self) -> usize {
+                use std::convert::TryFrom;
+
+                usize::try_from(self).expect("too large to convert")
+            }
+
+            fn is_in_bounds(word: usize) -> bool {
+                use std::convert::TryFrom;
+
+                Self::try_from(word).is_ok()
+            }
+
+            fn from_usize_unchecked(word: usize) -> Self {
+                word as Self
+            }
+        }
+    )*}
+}
+
+integers! { u8 u16 u32 u64 }
+
+macro_rules! byte_arrays {
+    ($($count:literal)*) => {$(
+        unsafe impl Scalar for [u8; $count] {
+            const ZERO: Self = [0; $count];
+
+            fn to_usize(self) -> usize {
+                let mut array = [0; WORD_SIZE];
+
+                unsafe {
+                    (&mut array as *mut [u8; WORD_SIZE] as *mut Self).write(self);
+                }
+
+                usize::from_le_bytes(array)
+            }
+
+            fn is_in_bounds(word: usize) -> bool {
+                1_usize.checked_shl($count * 8).map_or(true, |max| word < max)
+            }
+
+            fn from_usize_unchecked(word: usize) -> Self {
+                let array = word.to_le_bytes();
+
+                unsafe {
+                    (&array as *const [u8; WORD_SIZE] as *const Self).read()
+                }
+            }
+        }
+    )*};
+}
+
+byte_arrays! { 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 }
