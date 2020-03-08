@@ -22,11 +22,11 @@ cfg_if::cfg_if! {
     } else {
         /// A wrapper around a [`RawExclusiveLock`] that allows it to be used as a
         /// reentrant mutex
-        pub struct ReLock<L, I> {
+        pub struct ReLock<L, S, I> {
             inner: L,
             thread_info: I,
             owner: AtomicUsize,
-            count: Cell<usize>,
+            count: Cell<S>,
         }
     }
 }
