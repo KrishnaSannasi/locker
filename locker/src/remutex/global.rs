@@ -8,14 +8,14 @@ use crate::RawLockInfo;
 /// supplied with the [default mutex lock](crate::mutex::default)
 /// and the std thread info [`StdThreadInfo`](crate::reentrant::std_thread::StdThreadInfo)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Global;
+pub struct GlobalLock;
 
 /// a global raw reentrant mutex
-pub type RawReentrantMutex = crate::remutex::raw::ReentrantMutex<Global>;
+pub type RawReentrantMutex = crate::remutex::raw::ReentrantMutex<GlobalLock>;
 /// a global reentrant mutex
-pub type ReentrantMutex<T> = crate::remutex::ReentrantMutex<Global, T>;
+pub type ReentrantMutex<T> = crate::remutex::ReentrantMutex<GlobalLock, T>;
 
-impl Global {
+impl GlobalLock {
     /// Create a new global raw reentrant mutex
     pub const fn raw_remutex() -> RawReentrantMutex {
         unsafe { RawReentrantMutex::from_raw(Self) }
@@ -102,17 +102,17 @@ static GLOBAL: [ReLock; 61] = [
     crate::Init::INIT,
 ];
 
-impl crate::Init for Global {
+impl crate::Init for GlobalLock {
     const INIT: Self = Self;
 }
 
-unsafe impl crate::remutex::RawReentrantMutex for Global {}
-unsafe impl RawLockInfo for Global {
+unsafe impl crate::remutex::RawReentrantMutex for GlobalLock {}
+unsafe impl RawLockInfo for GlobalLock {
     type ExclusiveGuardTraits = <ReLock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <ReLock as RawLockInfo>::ShareGuardTraits;
 }
 
-unsafe impl RawShareLock for Global {
+unsafe impl RawShareLock for GlobalLock {
     #[inline]
     fn shr_lock(&self) {
         self.get().shr_lock()
@@ -140,7 +140,7 @@ unsafe impl RawShareLock for Global {
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl RawShareLockFair for Global {
+unsafe impl RawShareLockFair for GlobalLock {
     #[inline]
     unsafe fn shr_unlock_fair(&self) {
         self.get().shr_unlock_fair()
@@ -153,13 +153,13 @@ unsafe impl RawShareLockFair for Global {
 }
 
 #[cfg(feature = "parking_lot_core")]
-impl crate::RawTimedLock for Global {
+impl crate::RawTimedLock for GlobalLock {
     type Instant = std::time::Instant;
     type Duration = std::time::Duration;
 }
 
 #[cfg(feature = "parking_lot_core")]
-unsafe impl crate::share_lock::RawShareLockTimed for Global {
+unsafe impl crate::share_lock::RawShareLockTimed for GlobalLock {
     #[inline]
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.get().shr_try_lock_until(instant)
