@@ -82,8 +82,11 @@ unsafe impl crate::once::Finish for RawLock {
     }
 }
 
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::Init for RawLock {
     const INIT: Self = Self::new();
+}
+
+unsafe impl crate::RawLockInfo for RawLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }

@@ -29,7 +29,11 @@ cfg_if::cfg_if! {
 pub mod raw;
 
 /// Types implementing this trait can be used by [`Mutex`] to form a safe and fully-functioning mutex type.
-pub trait RawMutex: crate::RawLockInfo + RawExclusiveLock {}
+///
+/// # Safety
+///
+/// If `Self: Init`, then it must be safe to use `INIT` as the initial value for the lock
+pub unsafe trait RawMutex: crate::RawLockInfo + RawExclusiveLock {}
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -45,7 +49,7 @@ pub struct Mutex<L, T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<L: RawMutex, T: Default> Default for Mutex<L, T> {
+impl<L: RawMutex + crate::Init, T: Default> Default for Mutex<L, T> {
     #[inline]
     fn default() -> Self {
         Self::new(T::default())
@@ -128,19 +132,19 @@ impl<L, T: ?Sized> Mutex<L, T> {
     }
 }
 
-impl<L: RawMutex, T> Mutex<L, T> {
+impl<L: RawMutex + crate::Init, T> Mutex<L, T> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             /// Creates a new mutex in an unlocked state ready for use.
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::Mutex::from_raw(L::INIT), value) }
+                Self::from_raw_parts(crate::Init::INIT, value)
             }
         } else {
             /// Creates a new mutex in an unlocked state ready for use.
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::Mutex::from_raw(L::INIT), value) }
+                Self::from_raw_parts(crate::Init::INIT, value)
             }
         }
     }

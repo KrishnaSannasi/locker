@@ -96,12 +96,13 @@ impl SplitLock {
     }
 }
 
-impl crate::mutex::RawMutex for SplitLock {}
+impl crate::Init for SplitLock {
+    const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for SplitLock {}
 unsafe impl crate::rwlock::RawRwLock for SplitLock {}
 unsafe impl crate::RawLockInfo for SplitLock {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self::new();
-
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = ();
 }

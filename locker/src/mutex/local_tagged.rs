@@ -94,10 +94,12 @@ impl LocalTaggedLock {
     }
 }
 
-impl crate::mutex::RawMutex for LocalTaggedLock {}
-unsafe impl crate::RawLockInfo for LocalTaggedLock {
+impl crate::Init for LocalTaggedLock {
     const INIT: Self = Self::new();
+}
 
+unsafe impl crate::mutex::RawMutex for LocalTaggedLock {}
+unsafe impl crate::RawLockInfo for LocalTaggedLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }

@@ -203,12 +203,13 @@ impl SplitSpinLock {
     }
 }
 
-impl crate::mutex::RawMutex for SplitSpinLock {}
+impl crate::Init for SplitSpinLock {
+    const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for SplitSpinLock {}
 unsafe impl crate::rwlock::RawRwLock for SplitSpinLock {}
 unsafe impl crate::RawLockInfo for SplitSpinLock {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self::new();
-
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }

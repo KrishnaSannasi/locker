@@ -98,10 +98,12 @@ impl TaggedDefaultLock {
     }
 }
 
-impl crate::mutex::RawMutex for TaggedDefaultLock {}
-unsafe impl RawLockInfo for TaggedDefaultLock {
+impl crate::Init for TaggedDefaultLock {
     const INIT: Self = Self::new();
+}
 
+unsafe impl crate::mutex::RawMutex for TaggedDefaultLock {}
+unsafe impl RawLockInfo for TaggedDefaultLock {
     type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;
 }

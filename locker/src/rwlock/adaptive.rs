@@ -78,12 +78,13 @@ impl AdaptiveLock {
     }
 }
 
-impl crate::mutex::RawMutex for AdaptiveLock {}
+impl crate::Init for AdaptiveLock {
+    const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for AdaptiveLock {}
 unsafe impl crate::rwlock::RawRwLock for AdaptiveLock {}
 unsafe impl crate::RawLockInfo for AdaptiveLock {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self::new();
-
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = ();
 }

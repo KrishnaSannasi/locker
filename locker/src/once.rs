@@ -39,11 +39,15 @@ pub struct Once<L> {
 #[cfg(feature = "std")]
 impl<L: Finish> std::panic::RefUnwindSafe for Once<L> {}
 
-impl<L: RawLockInfo> Default for Once<L> {
+impl<L: RawLockInfo + crate::Init> Default for Once<L> {
     #[inline]
     fn default() -> Self {
-        unsafe { Self::from_raw(L::INIT) }
+        crate::Init::INIT
     }
+}
+
+impl<L: crate::Init> crate::Init for Once<L> {
+    const INIT: Self = unsafe { Once::from_raw(crate::Init::INIT) };
 }
 
 impl<L> Once<L> {
@@ -53,14 +57,6 @@ impl<L> Once<L> {
     #[inline]
     pub const unsafe fn from_raw(lock: L) -> Self {
         Self { lock }
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<L: Finish + RawLockInfo> Once<L> {
-    #[inline]
-    pub const fn new() -> Self {
-        unsafe { Self::from_raw(L::INIT) }
     }
 }
 
@@ -174,26 +170,28 @@ impl<L: Finish, T> Drop for OnceCell<L, T> {
     }
 }
 
-impl<L: Finish + RawLockInfo, T> Default for OnceCell<L, T> {
+impl<L: Finish + crate::Init, T> Default for OnceCell<L, T> {
     #[inline]
     fn default() -> Self {
         Self {
-            once: Once::default(),
+            once: crate::Init::INIT,
             value: UnsafeCell::new(MaybeUninit::uninit()),
         }
     }
 }
 
+impl<L: Finish + crate::Init, T> crate::Init for OnceCell<L, T> {
+    const INIT: Self = Self {
+        once: crate::Init::INIT,
+        value: UnsafeCell::new(MaybeUninit::uninit()),
+    };
+}
+
 #[cfg(feature = "nightly")]
-impl<L: Finish + RawLockInfo, T> OnceCell<L, T> {
+impl<L: Finish + crate::Init, T> OnceCell<L, T> {
     #[inline]
     pub const fn new() -> Self {
-        unsafe {
-            Self {
-                once: Once::from_raw(L::INIT),
-                value: UnsafeCell::new(MaybeUninit::uninit()),
-            }
-        }
+        crate::Init::INIT
     }
 }
 
@@ -289,33 +287,33 @@ pub struct Lazy<L, T, F, S> {
 
 unsafe impl<L, F: Send + Sync, T: Send + Sync, S> Sync for Lazy<L, T, F, S> where Once<L>: Sync {}
 
-impl<L: Finish + RawLockInfo, T, F: FnOnce() -> T> Lazy<L, T, F, Panic> {
+impl<L: Finish + crate::Init, T, F: FnOnce() -> T> Lazy<L, T, F, Panic> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(func: F) -> Self {
-                unsafe { Self::from_raw_parts(Once::new(), func) }
+                unsafe { Self::from_raw_parts(crate::Init::INIT, func) }
             }
         } else {
             #[inline]
             pub fn new(func: F) -> Self {
-                unsafe { Self::from_raw_parts(Once::default(), func) }
+                unsafe { Self::from_raw_parts(crate::Init::INIT, func) }
             }
         }
     }
 }
 
-impl<L: Finish + RawLockInfo, T, F: FnMut() -> T> Lazy<L, T, F, Retry> {
+impl<L: Finish + crate::Init, T, F: FnMut() -> T> Lazy<L, T, F, Retry> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new_retry(func: F) -> Self {
-                unsafe { Self::from_raw_parts(Once::new(), func) }
+                unsafe { Self::from_raw_parts(crate::Init::INIT, func) }
             }
         } else {
             #[inline]
             pub fn new_retry(func: F) -> Self {
-                unsafe { Self::from_raw_parts(Once::default(), func) }
+                unsafe { Self::from_raw_parts(crate::Init::INIT, func) }
             }
         }
     }
@@ -471,17 +469,17 @@ pub struct RacyLazy<L: Finish, T, F = fn() -> T> {
 unsafe impl<L: Finish, F: Send + Sync, T: Send + Sync> Sync for RacyLazy<L, T, F> where Once<L>: Sync
 {}
 
-impl<L: Finish + RawLockInfo, T, F: Fn() -> T> RacyLazy<L, T, F> {
+impl<L: Finish + crate::Init, T, F: Fn() -> T> RacyLazy<L, T, F> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(func: F) -> Self {
-                Self { once: OnceCell::new(), func }
+                Self { once: crate::Init::INIT, func }
             }
         } else {
             #[inline]
             pub fn new(func: F) -> Self {
-                Self { once: OnceCell::default(), func }
+                Self { once: crate::Init::INIT, func }
             }
         }
     }

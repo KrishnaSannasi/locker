@@ -83,8 +83,11 @@ impl RawLock {
     }
 }
 
-unsafe impl crate::RawLockInfo for RawLock {
+impl crate::Init for RawLock {
     const INIT: Self = Self::new();
+}
+
+unsafe impl crate::RawLockInfo for RawLock {
     type ExclusiveGuardTraits = <Tagged as crate::RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <Tagged as crate::RawLockInfo>::ShareGuardTraits;
 }

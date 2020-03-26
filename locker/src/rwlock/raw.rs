@@ -13,10 +13,10 @@ pub struct RwLock<L> {
     lock: L,
 }
 
-impl<L: RawRwLock> Default for RwLock<L> {
+impl<L: RawRwLock + crate::Init> Default for RwLock<L> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        crate::Init::INIT
     }
 }
 
@@ -68,22 +68,8 @@ impl<L> RwLock<L> {
     }
 }
 
-impl<L: RawRwLock> RwLock<L> {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "nightly")] {
-            /// Create a new raw rwlock
-            #[inline]
-            pub const fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
-            }
-        } else {
-            #[inline]
-            /// Create a new raw rwlock
-            pub fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
-            }
-        }
-    }
+impl<L: crate::Init> crate::Init for RwLock<L> {
+    const INIT: Self = unsafe { Self::from_raw(L::INIT) };
 }
 
 impl<L: RawRwLock> RwLock<L>

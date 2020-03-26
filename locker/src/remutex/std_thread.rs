@@ -5,9 +5,11 @@ use std::num::NonZeroUsize;
 /// Gives the current thread's id based on a thread local
 pub struct StdThreadInfo;
 
-unsafe impl super::ThreadInfo for StdThreadInfo {
+impl crate::Init for StdThreadInfo {
     const INIT: Self = Self;
+}
 
+unsafe impl super::ThreadInfo for StdThreadInfo {
     #[inline]
     fn id(&self) -> NonZeroUsize {
         use std::mem::MaybeUninit;

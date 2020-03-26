@@ -1,6 +1,6 @@
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockDowngrade, RawExclusiveLockFair};
 use crate::share_lock::{RawShareLock, RawShareLockFair};
-use crate::RawLockInfo;
+use crate::{Init, RawLockInfo};
 
 use crate::mutex::RawMutex;
 use crate::remutex::ThreadInfo;
@@ -41,16 +41,18 @@ impl<L, I> ReentrantPanic<L, I> {
     }
 }
 
-impl<L: RawMutex, I: ThreadInfo> RawMutex for ReentrantPanic<L, I> {}
+unsafe impl<L: RawMutex, I: ThreadInfo> RawMutex for ReentrantPanic<L, I> {}
 unsafe impl<L: RawRwLock, I: ThreadInfo> RawRwLock for ReentrantPanic<L, I> {}
 
-unsafe impl<L: RawLockInfo, I: ThreadInfo> RawLockInfo for ReentrantPanic<L, I> {
+impl<L: Init, I: Init> Init for ReentrantPanic<L, I> {
     const INIT: Self = Self {
-        inner: RawLockInfo::INIT,
-        thread_info: ThreadInfo::INIT,
+        inner: Init::INIT,
+        thread_info: Init::INIT,
         owner: AtomicUsize::new(0),
     };
+}
 
+unsafe impl<L: RawLockInfo, I: ThreadInfo> RawLockInfo for ReentrantPanic<L, I> {
     type ExclusiveGuardTraits = <L as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <L as RawLockInfo>::ShareGuardTraits;
 }

@@ -205,9 +205,12 @@ impl SplitLock {
     }
 }
 
-impl crate::mutex::RawMutex for SplitLock {}
-unsafe impl crate::RawLockInfo for SplitLock {
+impl crate::Init for SplitLock {
     const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for SplitLock {}
+unsafe impl crate::RawLockInfo for SplitLock {
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }

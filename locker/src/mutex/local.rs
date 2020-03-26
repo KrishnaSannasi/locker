@@ -31,11 +31,12 @@ impl LocalLock {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 }
-
-impl crate::mutex::RawMutex for LocalLock {}
-unsafe impl crate::RawLockInfo for LocalLock {
+impl crate::Init for LocalLock {
     const INIT: Self = Self::new();
+}
 
+unsafe impl crate::mutex::RawMutex for LocalLock {}
+unsafe impl crate::RawLockInfo for LocalLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }

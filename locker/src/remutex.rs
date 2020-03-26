@@ -27,12 +27,6 @@ pub mod raw;
 /// the same thread ID. However the ID of a thread that has exited can be re-used
 /// since that thread is no longer active.
 pub unsafe trait ThreadInfo {
-    /// The initial value of the `ThreadInfo`
-    ///
-    /// const to allow const construction of higher order abstractions
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self;
-
     /// The id of the current thread
     fn id(&self) -> NonZeroUsize;
 }
@@ -63,7 +57,7 @@ pub struct ReentrantMutex<L, T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<L: RawReentrantMutex, T: Default> Default for ReentrantMutex<L, T> {
+impl<L: RawReentrantMutex + crate::Init, T: Default> Default for ReentrantMutex<L, T> {
     #[inline]
     fn default() -> Self {
         Self::new(T::default())
@@ -143,19 +137,19 @@ impl<L, T: ?Sized> ReentrantMutex<L, T> {
     }
 }
 
-impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
+impl<L: RawReentrantMutex + crate::Init, T> ReentrantMutex<L, T> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             /// Create a new reentrant mutex
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::ReentrantMutex::from_raw(L::INIT), value) }
+                Self::from_raw_parts(crate::Init::INIT, value)
             }
         } else {
             /// Create a new reentrant mutex
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::ReentrantMutex::from_raw(L::INIT), value) }
+                Self::from_raw_parts(crate::Init::INIT, value)
             }
         }
     }

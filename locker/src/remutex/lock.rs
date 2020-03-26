@@ -63,11 +63,13 @@ unsafe impl<L: crate::mutex::RawMutex, S: Scalar, I: ThreadInfo> super::RawReent
 {
 }
 
+impl<L: crate::Init, S: Scalar, I: crate::Init> crate::Init for ReLock<L, S, I> {
+    const INIT: Self = unsafe { Self::from_raw_parts(L::INIT, I::INIT, S::ZERO) };
+}
+
 unsafe impl<L: crate::RawLockInfo, S: Scalar, I: ThreadInfo> crate::RawLockInfo
     for ReLock<L, S, I>
 {
-    const INIT: Self = unsafe { Self::from_raw_parts(L::INIT, I::INIT, S::ZERO) };
-
     type ExclusiveGuardTraits = std::convert::Infallible;
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }

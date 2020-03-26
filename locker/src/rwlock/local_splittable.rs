@@ -49,12 +49,13 @@ impl LocalSplitLock {
     }
 }
 
-impl crate::mutex::RawMutex for LocalSplitLock {}
+impl crate::Init for LocalSplitLock {
+    const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for LocalSplitLock {}
 unsafe impl crate::rwlock::RawRwLock for LocalSplitLock {}
 unsafe impl crate::RawLockInfo for LocalSplitLock {
-    #[allow(clippy::declare_interior_mutable_const)]
-    const INIT: Self = Self::new();
-
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }

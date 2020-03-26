@@ -2,7 +2,7 @@ use crate::exclusive_lock::{
     RawExclusiveLock, RawExclusiveLockDowngrade, RawExclusiveLockFair, SplittableExclusiveLock,
 };
 use crate::share_lock::{RawShareLock, RawShareLockFair};
-use crate::RawLockInfo;
+use crate::{Init, RawLockInfo};
 
 use crate::mutex::RawMutex;
 use crate::remutex::RawReentrantMutex;
@@ -14,13 +14,15 @@ use crate::rwlock::RawRwLock;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Fair<L: ?Sized>(pub L);
 
-impl<L: RawMutex + RawExclusiveLockFair> RawMutex for Fair<L> {}
+unsafe impl<L: RawMutex + RawExclusiveLockFair> RawMutex for Fair<L> {}
 unsafe impl<L: RawRwLock + RawExclusiveLockFair + RawShareLockFair> RawRwLock for Fair<L> {}
 unsafe impl<L: RawReentrantMutex + RawShareLockFair> RawReentrantMutex for Fair<L> {}
 
-unsafe impl<L: RawLockInfo> RawLockInfo for Fair<L> {
-    const INIT: Self = Self(RawLockInfo::INIT);
+impl<L: Init> Init for Fair<L> {
+    const INIT: Self = Self(Init::INIT);
+}
 
+unsafe impl<L: RawLockInfo + ?Sized> RawLockInfo for Fair<L> {
     type ExclusiveGuardTraits = <L as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <L as RawLockInfo>::ShareGuardTraits;
 }

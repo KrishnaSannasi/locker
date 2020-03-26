@@ -29,6 +29,8 @@ pub mod raw;
 /// # Safety
 ///
 /// A *shr lock* cannot exist at the same time as a *exc lock*
+///
+/// If `Self: Init`, then it must be safe to use `INIT` as the initial value for the lock
 pub unsafe trait RawRwLock: crate::mutex::RawMutex + RawShareLock {}
 
 /// A read-write syncronization primitive useful for protecting shared data
@@ -41,10 +43,10 @@ pub struct RwLock<L, T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<L: RawRwLock, T: Default> Default for RwLock<L, T> {
+impl<L: RawRwLock + crate::Init, T: Default> Default for RwLock<L, T> {
     #[inline]
     fn default() -> Self {
-        Self::new(T::default())
+        Self::new(Default::default())
     }
 }
 
@@ -126,19 +128,19 @@ impl<L, T: ?Sized> RwLock<L, T> {
     }
 }
 
-impl<L: RawRwLock, T> RwLock<L, T> {
+impl<L: RawRwLock + crate::Init, T> RwLock<L, T> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             /// Creates a new rwlock in an unlocked state ready for use.
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::RwLock::from_raw(L::INIT), value) }
+                Self::from_raw_parts(crate::Init::INIT, value)
             }
         } else {
             /// Creates a new rwlock in an unlocked state ready for use.
             #[inline]
             pub fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::RwLock::from_raw(L::INIT), value) }
+                Self::from_raw_parts(crate::Init::INIT, value)
             }
         }
     }

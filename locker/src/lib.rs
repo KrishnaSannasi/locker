@@ -43,6 +43,13 @@ macro_rules! defer {
     };
 }
 
+/// Create an item at compile time
+pub trait Init: Sized {
+    #[allow(clippy::declare_interior_mutable_const)]
+    /// A default initial value for the lock
+    const INIT: Self;
+}
+
 /// Some basic information about raw locks, like how to create them and
 /// what traits their guards should implement
 ///
@@ -50,7 +57,6 @@ macro_rules! defer {
 ///
 /// * there can be no way to safely change the lock state
 /// outside of the trait methods provided by this crate
-/// * `INIT`: It must be safe to use `INIT` as the initail value for the lock
 /// * `ExclusiveGuardTraits` & `ShareGuardTraits`: These fields contain types that will
 /// go directly into each of the `Raw*Guard` types. They can control what auto-traits are
 /// implemented, use these to limit the `Send` and `Sync` bounds on the guards.
@@ -58,10 +64,6 @@ macro_rules! defer {
 /// To remove both, you can use `(NoSend, NoSync)`
 /// If it is should be impossible to create the guard, then use `std::convert::Infallible`
 pub unsafe trait RawLockInfo {
-    #[allow(clippy::declare_interior_mutable_const)]
-    /// A default initial value for the lock
-    const INIT: Self;
-
     /// A type that will remove auto-trait implementations for the `*ExclusiveGuard` types
     type ExclusiveGuardTraits: marker::Marker;
 

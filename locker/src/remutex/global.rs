@@ -75,49 +75,39 @@ impl Global {
 
 type ReLock = crate::remutex::lock::ReLock<DefaultLock>;
 
-macro_rules! new {
-    () => {
-        unsafe {
-            ReLock::from_raw_parts(
-                DefaultLock::new(),
-                super::ThreadInfo::INIT,
-                super::counter::Scalar::ZERO,
-            )
-        }
-    };
-}
-
 // 61 because it is a large prime number,
 // this will reduce contention between unrelated locks
 // because unrealated locks will be unlikely to pick up the same lock,
 // even they are contigious in memory
 #[rustfmt::skip]
 static GLOBAL: [ReLock; 61] = [
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
     
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
     
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
     
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(), new!(), new!(), new!(), 
-    new!(),
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT,
 ];
+
+impl crate::Init for Global {
+    const INIT: Self = Self;
+}
 
 unsafe impl crate::remutex::RawReentrantMutex for Global {}
 unsafe impl RawLockInfo for Global {
-    const INIT: Self = Self;
-
     type ExclusiveGuardTraits = <ReLock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <ReLock as RawLockInfo>::ShareGuardTraits;
 }

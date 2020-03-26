@@ -55,10 +55,12 @@ impl SpinLock {
     }
 }
 
-impl crate::mutex::RawMutex for SpinLock {}
-unsafe impl crate::RawLockInfo for SpinLock {
+impl crate::Init for SpinLock {
     const INIT: Self = Self::new();
+}
 
+unsafe impl crate::mutex::RawMutex for SpinLock {}
+unsafe impl crate::RawLockInfo for SpinLock {
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }

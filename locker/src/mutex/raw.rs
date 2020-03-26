@@ -12,10 +12,10 @@ pub struct Mutex<L> {
     lock: L,
 }
 
-impl<L: RawMutex> Default for Mutex<L> {
+impl<L: RawMutex + crate::Init> Default for Mutex<L> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        crate::Init::INIT
     }
 }
 
@@ -67,22 +67,8 @@ impl<L> Mutex<L> {
     }
 }
 
-impl<L: RawMutex> Mutex<L> {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "nightly")] {
-            /// Create a new raw mutex
-            #[inline]
-            pub const fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
-            }
-        } else {
-            /// Create a new raw mutex
-            #[inline]
-            pub fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
-            }
-        }
-    }
+impl<L: RawMutex + crate::Init> crate::Init for Mutex<L> {
+    const INIT: Self = unsafe { Self::from_raw(L::INIT) };
 }
 
 impl<L: RawMutex> Mutex<L>

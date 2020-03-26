@@ -15,10 +15,10 @@ pub struct ReentrantMutex<L> {
     lock: L,
 }
 
-impl<L: RawReentrantMutex> Default for ReentrantMutex<L> {
+impl<L: RawReentrantMutex + crate::Init> Default for ReentrantMutex<L> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        crate::Init::INIT
     }
 }
 
@@ -68,22 +68,8 @@ impl<L> ReentrantMutex<L> {
     }
 }
 
-impl<L: RawReentrantMutex> ReentrantMutex<L> {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "nightly")] {
-            /// Create a new raw reentrant mutex
-            #[inline]
-            pub const fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
-            }
-        } else {
-            /// Create a new raw reentrant mutex
-            #[inline]
-            pub fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
-            }
-        }
-    }
+impl<L: crate::Init> crate::Init for ReentrantMutex<L> {
+    const INIT: Self = unsafe { Self::from_raw(L::INIT) };
 }
 
 impl<L: RawReentrantMutex> ReentrantMutex<L>

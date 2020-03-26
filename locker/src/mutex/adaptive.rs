@@ -172,9 +172,12 @@ impl AdaptiveLock {
     }
 }
 
-impl crate::mutex::RawMutex for AdaptiveLock {}
-unsafe impl crate::RawLockInfo for AdaptiveLock {
+impl crate::Init for AdaptiveLock {
     const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for AdaptiveLock {}
+unsafe impl crate::RawLockInfo for AdaptiveLock {
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }

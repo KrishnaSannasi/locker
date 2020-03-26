@@ -32,10 +32,12 @@ impl LocalSplitLock {
     }
 }
 
-impl crate::mutex::RawMutex for LocalSplitLock {}
-unsafe impl crate::RawLockInfo for LocalSplitLock {
+impl crate::Init for LocalSplitLock {
     const INIT: Self = Self::new();
+}
 
+unsafe impl crate::mutex::RawMutex for LocalSplitLock {}
+unsafe impl crate::RawLockInfo for LocalSplitLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }

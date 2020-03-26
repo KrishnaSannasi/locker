@@ -74,31 +74,33 @@ impl GlobalLock {
 // even they are contigious in memory
 #[rustfmt::skip]
 static GLOBAL: [DefaultLock; 61] = [
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
     
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
     
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(), DefaultLock::new(), DefaultLock::new(), DefaultLock::new(),
-    DefaultLock::new(),
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT, crate::Init::INIT, crate::Init::INIT, crate::Init::INIT,
+    crate::Init::INIT,
 ];
 
-impl crate::mutex::RawMutex for GlobalLock {}
-unsafe impl RawLockInfo for GlobalLock {
+impl crate::Init for GlobalLock {
     const INIT: Self = Self;
+}
 
+unsafe impl crate::mutex::RawMutex for GlobalLock {}
+unsafe impl RawLockInfo for GlobalLock {
     type ExclusiveGuardTraits = <DefaultLock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <DefaultLock as RawLockInfo>::ShareGuardTraits;
 }

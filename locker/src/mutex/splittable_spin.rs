@@ -82,9 +82,12 @@ impl SplitSpinLock {
     }
 }
 
-impl crate::mutex::RawMutex for SplitSpinLock {}
-unsafe impl crate::RawLockInfo for SplitSpinLock {
+impl crate::Init for SplitSpinLock {
     const INIT: Self = Self::new();
+}
+
+unsafe impl crate::mutex::RawMutex for SplitSpinLock {}
+unsafe impl crate::RawLockInfo for SplitSpinLock {
     type ExclusiveGuardTraits = ();
     type ShareGuardTraits = std::convert::Infallible;
 }

@@ -155,10 +155,12 @@ impl TaggedSpinLock {
     }
 }
 
-impl crate::mutex::RawMutex for TaggedSpinLock {}
-unsafe impl crate::RawLockInfo for TaggedSpinLock {
+impl crate::Init for TaggedSpinLock {
     const INIT: Self = Self::new();
+}
 
+unsafe impl crate::mutex::RawMutex for TaggedSpinLock {}
+unsafe impl crate::RawLockInfo for TaggedSpinLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
     type ShareGuardTraits = std::convert::Infallible;
 }
