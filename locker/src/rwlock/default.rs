@@ -59,6 +59,7 @@ impl crate::Init for DefaultLock {
 }
 
 unsafe impl crate::mutex::RawMutex for DefaultLock {}
+unsafe impl crate::rwlock::RawRwLock for DefaultLock {}
 unsafe impl RawLockInfo for DefaultLock {
     type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;

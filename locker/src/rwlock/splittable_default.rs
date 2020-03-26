@@ -59,6 +59,7 @@ impl crate::Init for SplitDefaultLock {
 }
 
 unsafe impl crate::mutex::RawMutex for SplitDefaultLock {}
+unsafe impl crate::rwlock::RawRwLock for SplitDefaultLock {}
 unsafe impl RawLockInfo for SplitDefaultLock {
     type ExclusiveGuardTraits = <Lock as RawLockInfo>::ExclusiveGuardTraits;
     type ShareGuardTraits = <Lock as RawLockInfo>::ShareGuardTraits;

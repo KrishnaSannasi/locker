@@ -15,18 +15,18 @@ pub type RawExclusiveGuard<'a, L> =
 
 #[doc(hidden)]
 #[must_use = "if unused the `RawExclusiveGuard` will immediately unlock"]
-pub struct _RawExclusiveGuard<'a, L: RawExclusiveLock, Tr> {
+pub struct _RawExclusiveGuard<'a, L: RawExclusiveLock + ?Sized, Tr> {
     lock: &'a L,
     _traits: Tr,
 }
 
-impl<'a, L: RawExclusiveLock, Tr> Drop for _RawExclusiveGuard<'_, L, Tr> {
+impl<'a, L: RawExclusiveLock + ?Sized, Tr> Drop for _RawExclusiveGuard<'_, L, Tr> {
     fn drop(&mut self) {
         unsafe { self.lock.exc_unlock() }
     }
 }
 
-impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L>
+impl<'a, L: RawExclusiveLock + RawLockInfo + ?Sized> RawExclusiveGuard<'a, L>
 where
     L::ExclusiveGuardTraits: Inhabitted,
 {

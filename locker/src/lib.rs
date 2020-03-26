@@ -8,6 +8,7 @@
         const_mut_refs,
         const_raw_ptr_deref,
         const_loop,
+        const_generics
     )
 )]
 
@@ -109,3 +110,11 @@ pub mod waiter; // 25
 
 pub use guard::{Mapped, Pure, TryMapError};
 use marker::*;
+
+///
+pub fn asm() -> crate::rwlock::sharded::Sharded<
+    crate::remutex::std_thread::StdThreadInfo,
+    [crate::rwlock::default::DefaultLock; 8],
+> {
+    crate::rwlock::sharded::Sharded::new()
+}

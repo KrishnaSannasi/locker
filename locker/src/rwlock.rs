@@ -14,6 +14,8 @@ cfg_if::cfg_if! {
         pub mod local_splittable;
         pub mod splittable_spin;
         pub mod splittable_default;
+        #[cfg(feature = "std")]
+        pub mod sharded;
 
         #[cfg(feature = "parking_lot_core")]
         pub mod adaptive;

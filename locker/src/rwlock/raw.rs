@@ -9,7 +9,7 @@ use crate::share_lock::{RawShareGuard, RawShareLockTimed};
 /// This rwlock will block threads waiting for the lock to become available.
 /// The rwlock can also be statically initialized or created via a `from_raw` constructor.
 #[repr(transparent)]
-pub struct RwLock<L> {
+pub struct RwLock<L: ?Sized> {
     lock: L,
 }
 
@@ -36,7 +36,9 @@ impl<L> RwLock<L> {
     pub fn into_inner(self) -> L {
         self.lock
     }
+}
 
+impl<L: ?Sized> RwLock<L> {
     /// the underlying lock
     #[inline]
     pub const fn inner(&self) -> &L {
@@ -72,7 +74,7 @@ impl<L: crate::Init> crate::Init for RwLock<L> {
     const INIT: Self = unsafe { Self::from_raw(L::INIT) };
 }
 
-impl<L: RawRwLock> RwLock<L>
+impl<L: RawRwLock + ?Sized> RwLock<L>
 where
     L::ExclusiveGuardTraits: crate::Inhabitted,
     L::ShareGuardTraits: crate::Inhabitted,
@@ -157,7 +159,7 @@ where
     }
 }
 
-impl<L: RawRwLock + RawExclusiveLockTimed + RawShareLockTimed> RwLock<L>
+impl<L: RawRwLock + RawExclusiveLockTimed + RawShareLockTimed + ?Sized> RwLock<L>
 where
     L::ExclusiveGuardTraits: crate::Inhabitted,
     L::ShareGuardTraits: crate::Inhabitted,

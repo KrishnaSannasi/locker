@@ -12,18 +12,18 @@ pub type RawShareGuard<'a, L> = _RawShareGuard<'a, L, <L as RawLockInfo>::ShareG
 
 #[doc(hidden)]
 #[must_use = "if unused the `RawShareGuard` will immediately unlock"]
-pub struct _RawShareGuard<'a, L: RawShareLock, Tr> {
+pub struct _RawShareGuard<'a, L: RawShareLock + ?Sized, Tr> {
     lock: &'a L,
     _traits: Tr,
 }
 
-impl<'a, L: RawShareLock, Tr> Drop for _RawShareGuard<'_, L, Tr> {
+impl<'a, L: RawShareLock + ?Sized, Tr> Drop for _RawShareGuard<'_, L, Tr> {
     fn drop(&mut self) {
         unsafe { self.lock.shr_unlock() }
     }
 }
 
-impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L>
+impl<'a, L: RawShareLock + RawLockInfo + ?Sized> RawShareGuard<'a, L>
 where
     L::ShareGuardTraits: Inhabitted,
 {
