@@ -89,6 +89,11 @@ impl<L, T: ?Sized> Mutex<L, T> {
         &self.raw
     }
 
+    /// Get a raw pointer to the value
+    pub fn as_mut_ptr(&self) -> *mut T {
+        self.value.get()
+    }
+
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             /// the underlying raw mutex

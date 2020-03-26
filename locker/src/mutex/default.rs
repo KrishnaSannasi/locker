@@ -24,16 +24,19 @@ pub struct DefaultLock(Lock);
 
 impl DefaultLock {
     /// Create a new default mutex lock
+    #[inline]
     pub const fn new() -> Self {
         Self(Lock::new())
     }
 
     /// Create a new raw mutex
+    #[inline]
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
     /// Create a new mutex
+    #[inline]
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }

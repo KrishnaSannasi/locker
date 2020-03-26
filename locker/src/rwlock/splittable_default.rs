@@ -29,26 +29,31 @@ pub struct SplitDefaultLock(Lock);
 
 impl SplitDefaultLock {
     /// Create a new default mutex lock
+    #[inline]
     pub const fn new() -> Self {
         Self(Lock::new())
     }
 
     /// Create a new raw mutex
+    #[inline]
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
     /// Create a new mutex
+    #[inline]
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
 
     /// Create a new raw rwlock
+    #[inline]
     pub const fn raw_rwlock() -> RawRwLock {
         unsafe { RawRwLock::from_raw(Self::new()) }
     }
 
     /// Create a new rwlock
+    #[inline]
     pub const fn rwlock<T>(value: T) -> RwLock<T> {
         RwLock::from_raw_parts(Self::raw_rwlock(), value)
     }
@@ -111,6 +116,7 @@ unsafe impl RawShareLock for SplitDefaultLock {
         self.0.shr_try_lock()
     }
 
+    #[inline]
     unsafe fn shr_split(&self) {
         self.0.shr_split()
     }
@@ -147,10 +153,12 @@ impl crate::RawTimedLock for SplitDefaultLock {
 
 #[cfg(feature = "parking_lot_core")]
 unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitDefaultLock {
+    #[inline]
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.exc_try_lock_until(instant)
     }
 
+    #[inline]
     fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
         self.0.exc_try_lock_for(duration)
     }
@@ -158,10 +166,12 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for SplitDefaultLock {
 
 #[cfg(feature = "parking_lot_core")]
 unsafe impl crate::share_lock::RawShareLockTimed for SplitDefaultLock {
+    #[inline]
     fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.shr_try_lock_until(instant)
     }
 
+    #[inline]
     fn shr_try_lock_for(&self, duration: Self::Duration) -> bool {
         self.0.shr_try_lock_for(duration)
     }

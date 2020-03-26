@@ -30,6 +30,7 @@ impl TaggedDefaultLock {
     pub const TAG_BITS: u8 = Lock::TAG_BITS;
 
     /// Create a new default mutex lock
+    #[inline]
     pub const fn new() -> Self {
         Self(Lock::new())
     }
@@ -41,6 +42,7 @@ impl TaggedDefaultLock {
     }
 
     /// Get the tag with the specified load ordering
+    #[inline]
     pub fn tag(&self, order: Ordering) -> u8 {
         self.0.tag(order)
     }
@@ -51,6 +53,7 @@ impl TaggedDefaultLock {
     /// returns the old tag
     ///
     /// this lowers to a single `fetch_and`
+    #[inline]
     pub fn and_tag(&self, tag: u8, order: Ordering) -> u8 {
         self.0.and_tag(tag, order)
     }
@@ -61,6 +64,7 @@ impl TaggedDefaultLock {
     /// returns the old tag
     ///
     /// this lowers to a single `fetch_or`
+    #[inline]
     pub fn or_tag(&self, tag: u8, order: Ordering) -> u8 {
         self.0.or_tag(tag, order)
     }
@@ -68,16 +72,19 @@ impl TaggedDefaultLock {
     /// swap the tag with the given tag using the specied ordering
     ///
     /// returns the old tag
+    #[inline]
     pub fn swap_tag(&self, tag: u8, order: Ordering) -> u8 {
         self.0.swap_tag(tag, order)
     }
 
     /// swap the tag with the given tag using the specied orderings
+    #[inline]
     pub fn exchange_tag(&self, tag: u8, success: Ordering, failure: Ordering) -> u8 {
         self.0.exchange_tag(tag, success, failure)
     }
 
     /// update the tag with the given function until it returns `None` or succeeds using the specied orderings
+    #[inline]
     pub fn update_tag(
         &self,
         success: Ordering,
@@ -88,11 +95,13 @@ impl TaggedDefaultLock {
     }
 
     /// Create a new raw tagged mutex
+    #[inline]
     pub const fn raw_mutex() -> RawMutex {
         unsafe { RawMutex::from_raw(Self::new()) }
     }
 
     /// Create a new tagged mutex
+    #[inline]
     pub const fn mutex<T>(value: T) -> Mutex<T> {
         Mutex::from_raw_parts(Self::raw_mutex(), value)
     }
@@ -151,10 +160,12 @@ impl crate::RawTimedLock for TaggedDefaultLock {
 
 #[cfg(feature = "parking_lot_core")]
 unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for TaggedDefaultLock {
+    #[inline]
     fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
         self.0.exc_try_lock_until(instant)
     }
 
+    #[inline]
     fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
         self.0.exc_try_lock_for(duration)
     }
