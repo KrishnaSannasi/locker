@@ -74,7 +74,7 @@ impl<L: RawReentrantMutex> ReentrantMutex<L> {
             /// Create a new raw reentrant mutex
             #[inline]
             pub const fn new() -> Self {
-                unsafe { Self::from_raw_parts(L::INIT) }
+                unsafe { Self::from_raw(L::INIT) }
             }
         } else {
             /// Create a new raw reentrant mutex

@@ -134,7 +134,7 @@ impl<L: RawMutex, T> Mutex<L, T> {
             /// Creates a new mutex in an unlocked state ready for use.
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(L::INIT, value) }
+                unsafe { Self::from_raw_parts(raw::Mutex::from_raw(L::INIT), value) }
             }
         } else {
             /// Creates a new mutex in an unlocked state ready for use.

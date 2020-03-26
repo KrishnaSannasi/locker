@@ -90,6 +90,7 @@ fn panic_on_poison(f: impl FnOnce()) -> impl FnOnce(&OnceState) {
 }
 
 #[cold]
+#[inline(never)]
 fn run_once_unchecked<F: ?Sized + Finish>(lock: &F, f: impl FnOnce(&OnceState)) {
     struct Poison<'a, F: ?Sized + Finish>(&'a F);
 
