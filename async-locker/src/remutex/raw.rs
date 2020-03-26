@@ -8,10 +8,10 @@ pub struct ReentrantMutex<L> {
     waker_set: WakerSet,
 }
 
-impl<L: RawReentrantMutex> Default for ReentrantMutex<L> {
+impl<L: RawReentrantMutex + locker::Init> Default for ReentrantMutex<L> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        locker::Init::INIT
     }
 }
 
@@ -52,17 +52,21 @@ impl<L> ReentrantMutex<L> {
     }
 }
 
-impl<L: RawReentrantMutex> ReentrantMutex<L> {
+impl<L: RawReentrantMutex + locker::Init> locker::Init for ReentrantMutex<L> {
+    const INIT: Self = unsafe { Self::from_raw(locker::Init::INIT) };
+}
+
+impl<L: RawReentrantMutex + locker::Init> ReentrantMutex<L> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new() -> Self {
-                unsafe { Self::from_raw_parts(raw::ReentrantMutex::new()) }
+                locker::Init::INIT
             }
         } else {
             #[inline]
             pub fn new() -> Self {
-                unsafe { Self::from_raw(raw::ReentrantMutex::new()) }
+                locker::Init::INIT
             }
         }
     }

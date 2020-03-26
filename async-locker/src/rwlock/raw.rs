@@ -8,10 +8,10 @@ pub struct RwLock<L> {
     waker_set: WakerSet,
 }
 
-impl<L: RawRwLock> Default for RwLock<L> {
+impl<L: RawRwLock + locker::Init> Default for RwLock<L> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        locker::Init::INIT
     }
 }
 
@@ -20,7 +20,7 @@ impl<L> RwLock<L> {
     ///
     /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
-    pub const unsafe fn from_raw_rwlock(raw: raw::RwLock<L>) -> Self {
+    pub const unsafe fn from_raw(raw: raw::RwLock<L>) -> Self {
         Self {
             raw,
             waker_set: WakerSet::new(),
@@ -52,17 +52,21 @@ impl<L> RwLock<L> {
     }
 }
 
-impl<L: RawRwLock> RwLock<L> {
+impl<L: RawRwLock + locker::Init> locker::Init for RwLock<L> {
+    const INIT: Self = unsafe { Self::from_raw(locker::Init::INIT) };
+}
+
+impl<L: RawRwLock + locker::Init> RwLock<L> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new() -> Self {
-                unsafe { Self::from_raw(L::INIT) }
+                locker::Init::INIT
             }
         } else {
             #[inline]
             pub fn new() -> Self {
-                unsafe { Self::from_raw_rwlock(raw::RwLock::new()) }
+                locker::Init::INIT
             }
         }
     }

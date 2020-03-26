@@ -12,7 +12,7 @@ pub struct RwLock<L, T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<L: RawRwLock, T: Default> Default for RwLock<L, T> {
+impl<L: RawRwLock + locker::Init, T: Default> Default for RwLock<L, T> {
     #[inline]
     fn default() -> Self {
         Self::new(T::default())
@@ -88,17 +88,17 @@ impl<L, T: ?Sized> RwLock<L, T> {
     }
 }
 
-impl<L: RawRwLock, T> RwLock<L, T> {
+impl<L: RawRwLock + locker::Init, T> RwLock<L, T> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(value: T) -> Self {
-                unsafe { Self::from_raw_parts(raw::RwLock::new(), value) }
+                unsafe { Self::from_raw_parts(locker::Init::INIT, value) }
             }
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                Self::from_raw_parts(raw::RwLock::new(), value)
+                Self::from_raw_parts(locker::Init::INIT, value)
             }
         }
     }

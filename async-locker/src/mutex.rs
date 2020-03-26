@@ -11,7 +11,7 @@ pub struct Mutex<L, T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<L: RawMutex, T: Default> Default for Mutex<L, T> {
+impl<L: RawMutex + locker::Init, T: Default> Default for Mutex<L, T> {
     #[inline]
     fn default() -> Self {
         Self::new(T::default())
@@ -75,17 +75,17 @@ impl<L, T: ?Sized> Mutex<L, T> {
     }
 }
 
-impl<L: RawMutex, T> Mutex<L, T> {
+impl<L: RawMutex + locker::Init, T> Mutex<L, T> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(value: T) -> Self {
-                Self::from_raw_parts(L::INIT, value)
+                Self::from_raw_parts(locker::Init::INIT, value)
             }
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                Self::from_raw_parts(raw::Mutex::new(), value)
+                Self::from_raw_parts(locker::Init::INIT, value)
             }
         }
     }

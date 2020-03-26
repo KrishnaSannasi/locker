@@ -20,7 +20,7 @@ pub struct ReentrantMutex<L, T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-impl<L: RawReentrantMutex, T: Default> Default for ReentrantMutex<L, T> {
+impl<L: RawReentrantMutex + locker::Init, T: Default> Default for ReentrantMutex<L, T> {
     #[inline]
     fn default() -> Self {
         Self::new(T::default())
@@ -83,17 +83,17 @@ impl<L, T: ?Sized> ReentrantMutex<L, T> {
     }
 }
 
-impl<L: RawReentrantMutex, T> ReentrantMutex<L, T> {
+impl<L: RawReentrantMutex + locker::Init, T> ReentrantMutex<L, T> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new(value: T) -> Self {
-                Self::from_raw_parts(raw::ReentrantMutex::new(), value)
+                Self::from_raw_parts(locker::Init::INIT, value)
             }
         } else {
             #[inline]
             pub fn new(value: T) -> Self {
-                Self::from_raw_parts(raw::ReentrantMutex::new(), value)
+                Self::from_raw_parts(locker::Init::INIT, value)
             }
         }
     }

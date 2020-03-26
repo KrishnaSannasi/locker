@@ -7,10 +7,10 @@ pub struct Mutex<L> {
     waker_set: WakerSet,
 }
 
-impl<L: RawMutex> Default for Mutex<L> {
+impl<L: RawMutex + locker::Init> Default for Mutex<L> {
     #[inline]
     fn default() -> Self {
-        Self::new()
+        locker::Init::INIT
     }
 }
 
@@ -19,7 +19,7 @@ impl<L> Mutex<L> {
     ///
     /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
-    pub const fn from_raw_mutex(raw: raw::Mutex<L>) -> Self {
+    pub const fn from_raw(raw: raw::Mutex<L>) -> Self {
         Self {
             raw,
             waker_set: WakerSet::new(),
@@ -51,17 +51,21 @@ impl<L> Mutex<L> {
     }
 }
 
-impl<L: RawMutex> Mutex<L> {
+impl<L: RawMutex + locker::Init> locker::Init for Mutex<L> {
+    const INIT: Self = unsafe { Self::from_raw(locker::Init::INIT) };
+}
+
+impl<L: RawMutex + locker::Init> Mutex<L> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
             pub const fn new() -> Self {
-                Self::from_raw_mutex(raw::Mutex::new())
+                locker::Init::INIT
             }
         } else {
             #[inline]
             pub fn new() -> Self {
-                Self::from_raw_mutex(raw::Mutex::new())
+                locker::Init::INIT
             }
         }
     }
