@@ -11,7 +11,7 @@ const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
 // thread directly without unlocking it.
 const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 
-use std::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::{AtomicU8, Ordering};
 use std::time::{Duration, Instant};
 
 /// an adaptive raw mutex
@@ -179,7 +179,7 @@ impl crate::Init for AdaptiveLock {
 unsafe impl crate::mutex::RawMutex for AdaptiveLock {}
 unsafe impl crate::RawLockInfo for AdaptiveLock {
     type ExclusiveGuardTraits = ();
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl RawExclusiveLock for AdaptiveLock {

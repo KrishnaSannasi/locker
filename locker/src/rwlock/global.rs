@@ -42,37 +42,37 @@ impl GlobalLock {
     /// create a new global mutex
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn mutex_from_mut<T: ?Sized>(value: &mut T) -> &mut Mutex<T> {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Create a new global mutex
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn mutex_from_mut_slice<T>(value: &mut [T]) -> &mut [Mutex<T>] {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Transpose a global mutex containing a slice into a slice of global mutexes
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn mutex_transpose<T>(value: &mut Mutex<[T]>) -> &mut [Mutex<T>] {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Create a new global rwlock
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn rwlock_from_mut<T: ?Sized>(value: &mut T) -> &mut Mutex<T> {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Create a new global rwlock
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn rwlock_from_mut_slice<T>(value: &mut [T]) -> &mut [Mutex<T>] {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Transpose a global rwlock containing a slice into a slice of global rwlock
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn rwlock_transpose<T>(value: &mut Mutex<[T]>) -> &mut [Mutex<T>] {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     #[inline(always)]

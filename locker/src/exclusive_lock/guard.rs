@@ -3,8 +3,8 @@ use super::{
     SplittableExclusiveLock,
 };
 use crate::RawLockInfo;
-use std::marker::PhantomData;
-use std::ops::{Deref, DerefMut};
+use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
 
 pub use crate::guard::{Mapped, Pure, TryMapError};
 

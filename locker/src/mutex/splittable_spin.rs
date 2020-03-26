@@ -2,7 +2,7 @@
 
 use crate::exclusive_lock::RawExclusiveLock;
 use crate::spin_wait::SpinWait;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// a splittable spin raw mutex
 ///
@@ -89,7 +89,7 @@ impl crate::Init for SplitSpinLock {
 unsafe impl crate::mutex::RawMutex for SplitSpinLock {}
 unsafe impl crate::RawLockInfo for SplitSpinLock {
     type ExclusiveGuardTraits = ();
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl RawExclusiveLock for SplitSpinLock {

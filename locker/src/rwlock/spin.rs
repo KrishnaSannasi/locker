@@ -1,7 +1,7 @@
 //! a spin lock
 
 use crate::spin_wait::SpinWait;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 const EXC_LOCK: usize = !0;
 

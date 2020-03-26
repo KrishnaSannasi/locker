@@ -1,11 +1,11 @@
 use crate::exclusive_lock::RawExclusiveLock;
 use crate::RawLockInfo;
 
-use std::cell::UnsafeCell;
-use std::marker::PhantomData;
-use std::mem::MaybeUninit;
+use core::cell::UnsafeCell;
+use core::marker::PhantomData;
+use core::mem::MaybeUninit;
 
-use std::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut};
 
 #[cfg(feature = "parking_lot_core")]
 pub mod local;
@@ -101,7 +101,7 @@ fn run_once_unchecked<F: ?Sized + Finish>(lock: &F, f: impl FnOnce(&OnceState)) 
 
     f(&OnceState(is_poisoned));
 
-    std::mem::forget(poison);
+    core::mem::forget(poison);
 
     lock.mark_done();
 }
@@ -164,7 +164,7 @@ unsafe impl<L: Finish, T: Send + Sync> Sync for OnceCell<L, T> where Once<L>: Sy
 
 impl<L: Finish, T> Drop for OnceCell<L, T> {
     fn drop(&mut self) {
-        if std::mem::needs_drop::<T>() && self.once.lock.is_done() {
+        if core::mem::needs_drop::<T>() && self.once.lock.is_done() {
             unsafe { self.value.get().cast::<T>().drop_in_place() }
         }
     }
@@ -343,7 +343,7 @@ impl<L, F, T, S> Lazy<L, T, F, S> {
         } else {
             #[cfg(debug_assertions)]
             unreachable!("soundness hole");
-            std::hint::unreachable_unchecked()
+            core::hint::unreachable_unchecked()
         }
     }
 
@@ -358,7 +358,7 @@ impl<L, F, T, S> Lazy<L, T, F, S> {
         } else {
             #[cfg(debug_assertions)]
             unreachable!("soundness hole");
-            std::hint::unreachable_unchecked()
+            core::hint::unreachable_unchecked()
         }
     }
 }
@@ -370,7 +370,7 @@ impl<L: Finish, F: FnOnce() -> T, T> Lazy<L, T, F, Panic> {
 
         this.once.call_once(move || {
             let inner = unsafe { &mut *inner };
-            let func = std::mem::replace(inner, LazyInner::Empty);
+            let func = core::mem::replace(inner, LazyInner::Empty);
 
             if let LazyInner::Func(func) = func {
                 *inner = LazyInner::Value(func());
@@ -386,7 +386,7 @@ impl<L: Finish, F: FnOnce() -> T, T> Lazy<L, T, F, Panic> {
 
         this.once.call_once(move || {
             let inner = unsafe { &mut *inner };
-            let func = std::mem::replace(inner, LazyInner::Empty);
+            let func = core::mem::replace(inner, LazyInner::Empty);
 
             if let LazyInner::Func(func) = func {
                 *inner = LazyInner::Value(func());

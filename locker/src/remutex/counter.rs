@@ -13,7 +13,7 @@ pub unsafe trait Scalar: Copy {
     fn from_usize_unchecked(_: usize) -> Self;
 }
 
-const WORD_SIZE: usize = std::mem::size_of::<usize>();
+const WORD_SIZE: usize = core::mem::size_of::<usize>();
 const SUB_WORD_SIZE: usize = WORD_SIZE - 1;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -43,13 +43,13 @@ macro_rules! integers {
             const ZERO: Self = 0;
 
             fn to_usize(self) -> usize {
-                use std::convert::TryFrom;
+                use core::convert::TryFrom;
 
                 usize::try_from(self).expect("too large to convert")
             }
 
             fn is_in_bounds(word: usize) -> bool {
-                use std::convert::TryFrom;
+                use core::convert::TryFrom;
 
                 Self::try_from(word).is_ok()
             }

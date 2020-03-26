@@ -29,19 +29,19 @@ impl GlobalLock {
     /// Create a new global reentrant mutex
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn remutex_from_mut<T: ?Sized>(value: &mut T) -> &mut ReentrantMutex<T> {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Create a new global reentrant mutex
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn remutex_from_mut_slice<T>(value: &mut [T]) -> &mut [ReentrantMutex<T>] {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     /// Transpose a global reentrant mutex containing a slice into a slice of reentrant global mutexes
     #[allow(clippy::transmute_ptr_to_ptr)]
     pub fn remutex_transpose<T>(value: &mut ReentrantMutex<[T]>) -> &mut [ReentrantMutex<T>] {
-        unsafe { std::mem::transmute(value) }
+        unsafe { core::mem::transmute(value) }
     }
 
     #[inline(always)]

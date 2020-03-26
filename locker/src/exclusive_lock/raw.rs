@@ -99,7 +99,7 @@ impl<'a, L: RawExclusiveLock + RawLockInfo> RawExclusiveGuard<'a, L> {
 
     /// Consume the guard without releasing the lock
     pub fn into_inner(self) -> &'a L {
-        std::mem::ManuallyDrop::new(self).lock
+        core::mem::ManuallyDrop::new(self).lock
     }
 }
 
@@ -107,7 +107,7 @@ impl<L: RawExclusiveLockFair + RawLockInfo> RawExclusiveGuard<'_, L> {
     /// Unlocks the guard using a fair unlocking protocol
     /// [read more](RawExclusiveLockFair#method.exc_unlock_fair)
     pub fn unlock_fair(self) {
-        let g = std::mem::ManuallyDrop::new(self);
+        let g = core::mem::ManuallyDrop::new(self);
         unsafe {
             g.lock.exc_unlock_fair();
         }

@@ -7,8 +7,8 @@ use crate::exclusive_lock::{RawExclusiveGuard, RawExclusiveLock};
 use crate::share_lock::{RawShareGuard, RawShareLock};
 use crate::RawLockInfo;
 
-use std::ptr;
-use std::sync::atomic::{AtomicPtr, Ordering};
+use core::ptr;
+use core::sync::atomic::{AtomicPtr, Ordering};
 use std::time::{Duration, Instant};
 
 // UnparkToken used to indicate that that the target thread should attempt to

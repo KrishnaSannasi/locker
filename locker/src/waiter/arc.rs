@@ -1,7 +1,7 @@
+use core::marker::PhantomData;
+use core::ptr::NonNull;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
-use std::marker::PhantomData;
-use std::ptr::NonNull;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct Inner<T> {
     count: AtomicUsize,
@@ -69,7 +69,7 @@ impl<T> Clone for Arc<T> {
     }
 }
 
-impl<T> std::ops::Deref for Arc<T> {
+impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
 
     fn deref(&self) -> &T {

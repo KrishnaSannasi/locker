@@ -1,8 +1,8 @@
 //! A wrapper around an [`RawExclusiveLock`] that allows it to be used as a
 //! reentrant lock
 
-use std::cell::Cell;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::cell::Cell;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair, RawExclusiveLockTimed};
 use crate::share_lock::{RawShareLock, RawShareLockFair, RawShareLockTimed};
@@ -70,7 +70,7 @@ impl<L: crate::Init, S: Scalar, I: crate::Init> crate::Init for ReLock<L, S, I> 
 unsafe impl<L: crate::RawLockInfo, S: Scalar, I: ThreadInfo> crate::RawLockInfo
     for ReLock<L, S, I>
 {
-    type ExclusiveGuardTraits = std::convert::Infallible;
+    type ExclusiveGuardTraits = core::convert::Infallible;
     type ShareGuardTraits = (crate::NoSend, crate::NoSync);
 }
 

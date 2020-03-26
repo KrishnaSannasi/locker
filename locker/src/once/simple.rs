@@ -1,6 +1,6 @@
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
 use crate::mutex::tagged::TaggedLock as Tagged;
-use std::sync::atomic::Ordering;
+use core::sync::atomic::Ordering;
 
 pub type RawMutex = crate::mutex::raw::Mutex<RawLock>;
 pub type Mutex<T> = crate::mutex::Mutex<RawLock, T>;

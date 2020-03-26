@@ -88,7 +88,7 @@ impl crate::Init for RawLock {
 
 unsafe impl crate::RawLockInfo for RawLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl RawExclusiveLock for RawLock {

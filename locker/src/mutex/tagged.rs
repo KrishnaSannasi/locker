@@ -1,8 +1,8 @@
 //! a tagged lock
 
 use crate::exclusive_lock::RawExclusiveLock;
+use core::sync::atomic::{AtomicU8, Ordering};
 use parking_lot_core::{self, ParkResult, SpinWait, UnparkResult, UnparkToken, DEFAULT_PARK_TOKEN};
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::time::Instant;
 
 // UnparkToken used to indicate that that the target thread should attempt to
@@ -151,7 +151,7 @@ impl crate::Init for TaggedLock {
 unsafe impl crate::mutex::RawMutex for TaggedLock {}
 unsafe impl crate::RawLockInfo for TaggedLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl RawExclusiveLock for TaggedLock {

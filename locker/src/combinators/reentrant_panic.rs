@@ -6,7 +6,7 @@ use crate::mutex::RawMutex;
 use crate::remutex::ThreadInfo;
 use crate::rwlock::RawRwLock;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "std")] {
@@ -151,6 +151,7 @@ unsafe impl<L: ?Sized + RawShareLockFair, I: ThreadInfo> RawShareLockFair for Re
 }
 
 #[test]
+#[cfg(all(feature = "extra", feature = "std"))]
 #[should_panic = "tried to lock a locked exclusive lock from the same thread!"]
 fn reentrant_panic() {
     let mtx = crate::mutex::Mutex::<ReentrantPanic<crate::mutex::default::DefaultLock>, _>::new(10);

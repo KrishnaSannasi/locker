@@ -1,12 +1,14 @@
 #[test]
+#[cfg(all(feature = "extra", feature = "std"))]
 fn test() {
     use locker::{
         remutex::std_thread::StdThreadInfo,
         rwlock::{default::DefaultLock, raw::RwLock, sharded::Sharded},
     };
 
-    let rwlock = unsafe { RwLock::from_raw(Sharded::<StdThreadInfo, [DefaultLock; 8]>::new()) };
-    let rwlock: &RwLock<Sharded<_, [_]>> = &rwlock;
+    let rwlock: RwLock<Box<Sharded<_, [_]>>> = unsafe {
+        RwLock::from_raw(Box::new(Sharded::<StdThreadInfo, [DefaultLock; 8]>::new()) as _)
+    };
 
     let x = rwlock.write();
 

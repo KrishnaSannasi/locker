@@ -1,7 +1,7 @@
 //! a reentrant mutex
 
-use std::cell::UnsafeCell;
-use std::num::NonZeroUsize;
+use core::cell::UnsafeCell;
+use core::num::NonZeroUsize;
 
 use crate::share_lock::{RawShareLock, RawShareLockTimed, ShareGuard};
 
@@ -161,7 +161,7 @@ where
 {
     #[inline]
     fn wrap<'s>(&'s self, raw: crate::share_lock::RawShareGuard<'s, L>) -> ShareGuard<'s, L, T> {
-        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        assert!(core::ptr::eq(self.raw.inner(), raw.inner()));
         unsafe { ShareGuard::from_raw_parts(raw, self.value.get()) }
     }
 
@@ -224,5 +224,48 @@ where
     #[inline]
     pub fn try_lock_for(&self, duration: L::Duration) -> Option<ShareGuard<'_, L, T>> {
         Some(self.wrap(self.raw.try_lock_for(duration)?))
+    }
+}
+
+unsafe impl<L: ?Sized + RawReentrantMutex> RawReentrantMutex for &L {}
+unsafe impl<L: ?Sized + RawReentrantMutex> RawReentrantMutex for &mut L {}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawReentrantMutex> RawReentrantMutex for std::boxed::Box<L> {}
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawReentrantMutex> RawReentrantMutex for std::rc::Rc<L> {}
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawReentrantMutex> RawReentrantMutex for std::sync::Arc<L> {}
+
+unsafe impl<L: ?Sized + ThreadInfo> ThreadInfo for &L {
+    fn id(&self) -> core::num::NonZeroUsize {
+        L::id(self)
+    }
+}
+
+unsafe impl<L: ?Sized + ThreadInfo> ThreadInfo for &mut L {
+    fn id(&self) -> core::num::NonZeroUsize {
+        L::id(self)
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + ThreadInfo> ThreadInfo for std::boxed::Box<L> {
+    fn id(&self) -> core::num::NonZeroUsize {
+        L::id(self)
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + ThreadInfo> ThreadInfo for std::rc::Rc<L> {
+    fn id(&self) -> core::num::NonZeroUsize {
+        L::id(self)
+    }
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + ThreadInfo> ThreadInfo for std::sync::Arc<L> {
+    fn id(&self) -> core::num::NonZeroUsize {
+        L::id(self)
     }
 }

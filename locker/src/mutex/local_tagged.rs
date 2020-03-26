@@ -1,6 +1,6 @@
 //! a local (single-threaded) tagged lock
 
-use std::cell::Cell;
+use core::cell::Cell;
 
 /// a local (single-threaded) tagged raw mutex
 pub type RawMutex = crate::mutex::raw::Mutex<LocalTaggedLock>;
@@ -101,7 +101,7 @@ impl crate::Init for LocalTaggedLock {
 unsafe impl crate::mutex::RawMutex for LocalTaggedLock {}
 unsafe impl crate::RawLockInfo for LocalTaggedLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for LocalTaggedLock {

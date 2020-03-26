@@ -26,7 +26,7 @@ impl Marker for () {}
 impl Inhabitted for () {
     const INIT: Self = ();
 }
-impl Marker for std::convert::Infallible {}
+impl Marker for core::convert::Infallible {}
 
 /// A [`Marker`](crate::Marker) that doesn't implement `Send`
 #[derive(Default, Clone, Copy)]
@@ -38,11 +38,11 @@ pub struct NoSync(Inner);
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "nightly")] {
-        type Inner = std::marker::PhantomData<()>;
+        type Inner = core::marker::PhantomData<()>;
         impl !Send for NoSync {}
         impl !Sync for NoSync {}
     } else {
-        type Inner = std::marker::PhantomData<&'static std::cell::Cell<()>>;
+        type Inner = core::marker::PhantomData<&'static core::cell::Cell<()>>;
         unsafe impl Sync for NoSend {}
         unsafe impl Send for NoSync {}
     }
@@ -50,12 +50,12 @@ cfg_if::cfg_if! {
 
 impl Marker for NoSend {}
 impl Inhabitted for NoSend {
-    const INIT: Self = Self(std::marker::PhantomData);
+    const INIT: Self = Self(core::marker::PhantomData);
 }
 
 impl Marker for NoSync {}
 impl Inhabitted for NoSync {
-    const INIT: Self = Self(std::marker::PhantomData);
+    const INIT: Self = Self(core::marker::PhantomData);
 }
 
 impl<A: Marker, B: Marker> Marker for (A, B) {}

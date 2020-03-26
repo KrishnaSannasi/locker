@@ -7,7 +7,7 @@ pub use parking_lot_core::SpinWait;
 #[cfg(not(feature = "parking_lot_core"))]
 fn cpu_relax(iterations: u32) {
     for _ in 0..iterations {
-        std::sync::atomic::spin_loop_hint()
+        core::sync::atomic::spin_loop_hint()
     }
 }
 

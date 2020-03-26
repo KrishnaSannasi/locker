@@ -28,7 +28,7 @@ impl<I, S> Sharded<I, S> {
 impl<I: ThreadInfo + crate::Init, S: RawRwLock + crate::Init, const N: usize> Sharded<I, [S; N]> {
     pub fn new() -> Self {
         unsafe {
-            use std::mem::MaybeUninit;
+            use core::mem::MaybeUninit;
             let mut shards = MaybeUninit::<[S; N]>::uninit();
             let mut ptr = shards.as_mut_ptr().cast::<S>();
 
