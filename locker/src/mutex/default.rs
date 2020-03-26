@@ -100,3 +100,6 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for DefaultLock {
         self.0.exc_try_lock_for(duration)
     }
 }
+
+#[cfg(feature = "parking_lot_core")]
+unsafe impl crate::condvar::Parkable for DefaultLock {}

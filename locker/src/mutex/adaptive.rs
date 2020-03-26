@@ -268,26 +268,4 @@ unsafe impl crate::exclusive_lock::RawExclusiveLockTimed for AdaptiveLock {
     }
 }
 
-unsafe impl crate::condvar::Parkable for AdaptiveLock {
-    fn mark_parked_if_locked(&self) -> bool {
-        let mut state = self.state.load(Ordering::Relaxed);
-        loop {
-            if state & Self::LOCK_BIT == 0 {
-                return false;
-            }
-            match self.state.compare_exchange_weak(
-                state,
-                state | Self::PARK_BIT,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => return true,
-                Err(x) => state = x,
-            }
-        }
-    }
-
-    fn mark_parked(&self) {
-        self.state.fetch_or(Self::PARK_BIT, Ordering::Relaxed);
-    }
-}
+unsafe impl crate::condvar::Parkable for AdaptiveLock {}
