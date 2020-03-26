@@ -5,11 +5,10 @@ use crate::RawLockInfo;
 
 use std::time::{Duration, Instant};
 
-mod raw;
-pub use raw::RawCondvar;
+pub mod raw;
 
 pub struct Condvar {
-    raw: RawCondvar,
+    raw: raw::Condvar,
 }
 
 /// # Safety
@@ -30,10 +29,16 @@ impl WaitTimeoutResult {
     }
 }
 
+impl crate::Init for Condvar {
+    const INIT: Self = Self {
+        raw: crate::Init::INIT,
+    };
+}
+
 impl Condvar {
     pub const fn new() -> Self {
         Self {
-            raw: RawCondvar::new(),
+            raw: raw::Condvar::new(),
         }
     }
 }

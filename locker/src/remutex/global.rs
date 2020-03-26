@@ -4,9 +4,9 @@ use crate::mutex::default::DefaultLock;
 use crate::share_lock::{RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
 
-/// A global lock set that uses the a [`ReLock`](crate::reentrant::lock::ReLock)
+/// A global lock set that uses the a [`ReLock`](crate::remutex::lock::ReLock)
 /// supplied with the [default mutex lock](crate::mutex::default)
-/// and the std thread info [`StdThreadInfo`](crate::reentrant::std_thread::StdThreadInfo)
+/// and the std thread info [`StdThreadInfo`](crate::remutex::std_thread::StdThreadInfo)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct GlobalLock;
 

@@ -8,11 +8,17 @@ use crate::RawLockInfo;
 use core::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-pub struct RawCondvar {
+pub struct Condvar {
     is_parked: AtomicBool,
 }
 
-impl RawCondvar {
+impl crate::Init for Condvar {
+    const INIT: Self = Self {
+        is_parked: AtomicBool::new(false),
+    };
+}
+
+impl Condvar {
     pub const fn new() -> Self {
         Self {
             is_parked: AtomicBool::new(false),
@@ -20,7 +26,7 @@ impl RawCondvar {
     }
 }
 
-impl RawCondvar {
+impl Condvar {
     #[inline]
     pub fn notify_one(&self) -> bool {
         let is_parked = self.is_parked.load(Ordering::Relaxed);
@@ -76,7 +82,7 @@ impl RawCondvar {
 
     #[cold]
     #[inline(never)]
-    unsafe fn wait_until_internal(
+    unsafe fn wait(
         &self,
         timeout: Option<Instant>,
         lock: impl FnOnce(),
@@ -113,14 +119,14 @@ impl RawCondvar {
     }
 }
 
-impl RawCondvar {
+impl Condvar {
     #[inline]
     fn exc_wait_until_internal(
         &self,
         lock: &dyn RawExclusiveLock,
         timeout: Option<Instant>,
     ) -> WaitTimeoutResult {
-        unsafe { self.wait_until_internal(timeout, || lock.exc_lock(), || lock.exc_unlock()) }
+        unsafe { self.wait(timeout, || lock.exc_lock(), || lock.exc_unlock()) }
     }
 
     #[inline]
@@ -150,14 +156,14 @@ impl RawCondvar {
     }
 }
 
-impl RawCondvar {
+impl Condvar {
     #[inline]
     fn shr_wait_until_internal(
         &self,
         lock: &dyn RawShareLock,
         timeout: Option<Instant>,
     ) -> WaitTimeoutResult {
-        unsafe { self.wait_until_internal(timeout, || lock.shr_lock(), || lock.shr_unlock()) }
+        unsafe { self.wait(timeout, || lock.shr_lock(), || lock.shr_unlock()) }
     }
 
     #[inline]

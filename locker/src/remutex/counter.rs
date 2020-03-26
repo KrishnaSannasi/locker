@@ -61,7 +61,7 @@ macro_rules! integers {
     )*}
 }
 
-integers! { u8 u16 u32 u64 }
+integers! { u8 u16 u32 u64 usize }
 
 macro_rules! byte_arrays {
     ($($count:literal)*) => {$(
