@@ -31,7 +31,7 @@ const TOKEN_EXCLUSIVE: ParkToken = ParkToken(1);
 // thread directly without unlocking it.
 const TOKEN_SHARED: ParkToken = ParkToken(2);
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 /// a splittable raw mutex
@@ -261,8 +261,8 @@ impl SplitLock {
 
     #[cold]
     fn unpark_shared(&self) {
+        use core::cell::Cell;
         use parking_lot_core::FilterOp;
-        use std::cell::Cell;
 
         let count = Cell::new(0);
 

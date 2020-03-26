@@ -1,6 +1,6 @@
 //! a local (single-threaded) splittable lock
 
-use std::cell::Cell;
+use core::cell::Cell;
 
 /// a local (single-threaded) splittable raw mutex
 pub type RawMutex = crate::mutex::raw::Mutex<LocalSplitLock>;
@@ -39,7 +39,7 @@ impl crate::Init for LocalSplitLock {
 unsafe impl crate::mutex::RawMutex for LocalSplitLock {}
 unsafe impl crate::RawLockInfo for LocalSplitLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for LocalSplitLock {

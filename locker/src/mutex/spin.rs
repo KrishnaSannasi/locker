@@ -1,7 +1,7 @@
 //! a spin lock
 
 use crate::spin_wait::SpinWait;
-use std::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, Ordering};
 
 /// a raw mutex backed by a spin lock
 ///
@@ -62,7 +62,7 @@ impl crate::Init for SpinLock {
 unsafe impl crate::mutex::RawMutex for SpinLock {}
 unsafe impl crate::RawLockInfo for SpinLock {
     type ExclusiveGuardTraits = ();
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for SpinLock {

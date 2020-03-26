@@ -96,7 +96,7 @@ impl<'a, L: RawShareLock + RawLockInfo> RawShareGuard<'a, L> {
 
     /// Consume the guard without releasing the lock
     pub fn into_inner(self) -> &'a L {
-        std::mem::ManuallyDrop::new(self).lock
+        core::mem::ManuallyDrop::new(self).lock
     }
 }
 
@@ -104,7 +104,7 @@ impl<L: RawShareLockFair + RawLockInfo> RawShareGuard<'_, L> {
     /// Unlocks the guard using a fair unlocking protocol
     /// [read more](RawShareLockFair#method.shr_unlock_fair)
     pub fn unlock_fair(self) {
-        let g = std::mem::ManuallyDrop::new(self);
+        let g = core::mem::ManuallyDrop::new(self);
         unsafe {
             g.lock.shr_unlock_fair();
         }

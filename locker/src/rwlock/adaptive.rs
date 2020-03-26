@@ -31,7 +31,7 @@ const TOKEN_EXCLUSIVE: ParkToken = ParkToken(1);
 // thread directly without unlocking it.
 const TOKEN_SHARED: ParkToken = ParkToken(2);
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 /// an adaptive raw mutex
@@ -346,8 +346,8 @@ impl AdaptiveLock {
 
     #[cold]
     fn unpark_shared(&self) {
+        use core::cell::Cell;
         use parking_lot_core::FilterOp;
-        use std::cell::Cell;
 
         let count = Cell::new(0);
 

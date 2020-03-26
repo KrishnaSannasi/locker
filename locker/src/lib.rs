@@ -19,24 +19,10 @@
 //!
 
 #[cfg(not(any(test, feature = "std", feature = "parking_lot_core")))]
-extern crate core as std;
+extern crate core;
 
 #[cfg(all(feature = "alloc", not(test), not(feature = "std")))]
-extern crate alloc;
-
-mod alloc_prelude {
-    cfg_if::cfg_if! {
-        if #[cfg(any(test, feature="std"))] {
-            pub use std::boxed::Box;
-            pub use std::sync::Arc;
-            pub use std::rc::Rc;
-        } else if #[cfg(feature="alloc")] {
-            pub use alloc::boxed::Box;
-            pub use alloc::sync::Arc;
-            pub use alloc::rc::Rc;
-        }
-    }
-}
+extern crate alloc as std;
 
 macro_rules! defer {
     ($($inner:tt)*) => {
@@ -63,7 +49,7 @@ pub trait Init: Sized {
 /// implemented, use these to limit the `Send` and `Sync` bounds on the guards.
 /// You can use `NoSend` to remove the `Send` bounds, and `NoSync` to remove the `Sync` bound.
 /// To remove both, you can use `(NoSend, NoSync)`
-/// If it is should be impossible to create the guard, then use `std::convert::Infallible`
+/// If it is should be impossible to create the guard, then use `core::convert::Infallible`
 pub unsafe trait RawLockInfo {
     /// A type that will remove auto-trait implementations for the `*ExclusiveGuard` types
     type ExclusiveGuardTraits: marker::Marker;
@@ -111,10 +97,25 @@ pub mod waiter; // 25
 pub use guard::{Mapped, Pure, TryMapError};
 use marker::*;
 
-///
-pub fn asm() -> crate::rwlock::sharded::Sharded<
-    crate::remutex::std_thread::StdThreadInfo,
-    [crate::rwlock::default::DefaultLock; 8],
-> {
-    crate::rwlock::sharded::Sharded::new()
+macro_rules! trait_impls {
+    ($L:ident => $($type:ty),*) => {$(
+        unsafe impl<$L: ?Sized + RawLockInfo> RawLockInfo for $type {
+            type ExclusiveGuardTraits = L::ExclusiveGuardTraits;
+            type ShareGuardTraits = L::ShareGuardTraits;
+        }
+
+        impl<$L: ?Sized + RawTimedLock> RawTimedLock for $type {
+            type Instant = L::Instant;
+            type Duration = L::Duration;
+        }
+    )*};
+}
+
+trait_impls! {
+    L => &L, &mut L
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+trait_impls! {
+    L => std::boxed::Box<L>, std::rc::Rc<L>, std::sync::Arc<L>
 }

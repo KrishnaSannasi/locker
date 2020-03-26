@@ -2,7 +2,7 @@
 
 use crate::exclusive_lock::{RawExclusiveLock, RawExclusiveLockFair};
 use crate::RawLockInfo;
-use std::sync::atomic::Ordering;
+use core::sync::atomic::Ordering;
 
 /// A default tagged raw mutex
 pub type RawMutex = crate::mutex::raw::Mutex<TaggedDefaultLock>;

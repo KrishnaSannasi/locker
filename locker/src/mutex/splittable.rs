@@ -11,7 +11,7 @@ const TOKEN_NORMAL: UnparkToken = UnparkToken(0);
 // thread directly without unlocking it.
 const TOKEN_HANDOFF: UnparkToken = UnparkToken(1);
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 /// a splittable raw mutex
@@ -212,7 +212,7 @@ impl crate::Init for SplitLock {
 unsafe impl crate::mutex::RawMutex for SplitLock {}
 unsafe impl crate::RawLockInfo for SplitLock {
     type ExclusiveGuardTraits = ();
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl RawExclusiveLock for SplitLock {

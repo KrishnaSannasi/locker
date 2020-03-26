@@ -2,7 +2,7 @@
 
 use crate::exclusive_lock::RawExclusiveLock;
 use crate::spin_wait::SpinWait;
-use std::sync::atomic::{AtomicU8, Ordering};
+use core::sync::atomic::{AtomicU8, Ordering};
 
 /// A tagged spin raw mutex that can store up to `TAG_BITS` bits in the lower bits of the lock
 ///
@@ -162,7 +162,7 @@ impl crate::Init for TaggedSpinLock {
 unsafe impl crate::mutex::RawMutex for TaggedSpinLock {}
 unsafe impl crate::RawLockInfo for TaggedSpinLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl RawExclusiveLock for TaggedSpinLock {

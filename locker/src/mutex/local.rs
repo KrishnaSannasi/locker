@@ -1,6 +1,6 @@
 //! a local (single threaded) mutex lock
 
-use std::cell::Cell;
+use core::cell::Cell;
 
 /// a local raw mutex
 pub type RawMutex = crate::mutex::raw::Mutex<LocalLock>;
@@ -38,7 +38,7 @@ impl crate::Init for LocalLock {
 unsafe impl crate::mutex::RawMutex for LocalLock {}
 unsafe impl crate::RawLockInfo for LocalLock {
     type ExclusiveGuardTraits = (crate::NoSend, crate::NoSync);
-    type ShareGuardTraits = std::convert::Infallible;
+    type ShareGuardTraits = core::convert::Infallible;
 }
 
 unsafe impl crate::exclusive_lock::RawExclusiveLock for LocalLock {

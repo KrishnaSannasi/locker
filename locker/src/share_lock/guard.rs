@@ -1,7 +1,7 @@
 use super::{RawShareGuard, RawShareLock, RawShareLockFair};
 use crate::RawLockInfo;
-use std::marker::PhantomData;
-use std::ops::Deref;
+use core::marker::PhantomData;
+use core::ops::Deref;
 
 pub use crate::guard::{Mapped, Pure, TryMapError};
 

@@ -190,194 +190,66 @@ pub unsafe trait RawExclusiveLockDowngrade:
     unsafe fn downgrade(&self);
 }
 
-// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &L {
-//     #[inline(always)]
-//     fn exc_lock(&self) {
-//         L::exc_lock(self)
-//     }
+macro_rules! trait_impls {
+    ($L:ident => $($type:ty),*) => {$(
+        unsafe impl<$L: ?Sized + RawExclusiveLock> RawExclusiveLock for $type {
+            fn exc_lock(&self) {
+                L::exc_lock(self)
+            }
 
-//     #[inline(always)]
-//     fn exc_try_lock(&self) -> bool {
-//         L::exc_try_lock(self)
-//     }
+            fn exc_try_lock(&self) -> bool {
+                L::exc_try_lock(self)
+            }
 
-//     #[inline(always)]
-//     unsafe fn exc_unlock(&self) {
-//         L::exc_unlock(self)
-//     }
+            unsafe fn exc_unlock(&self) {
+                L::exc_unlock(self)
+            }
 
-//     #[inline(always)]
-//     unsafe fn exc_bump(&self) {
-//         L::exc_bump(self)
-//     }
-// }
+            unsafe fn exc_bump(&self) {
+                L::exc_bump(self)
+            }
+        }
 
-// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for &mut L {
-//     #[inline(always)]
-//     fn exc_lock(&self) {
-//         L::exc_lock(self)
-//     }
+        unsafe impl<$L: ?Sized + RawExclusiveLockTimed> RawExclusiveLockTimed for $type {
+            fn exc_try_lock_until(&self, instant: Self::Instant) -> bool {
+                L::exc_try_lock_until(self, instant)
+            }
 
-//     #[inline(always)]
-//     fn exc_try_lock(&self) -> bool {
-//         L::exc_try_lock(self)
-//     }
+            fn exc_try_lock_for(&self, duration: Self::Duration) -> bool {
+                L::exc_try_lock_for(self, duration)
+            }
+        }
 
-//     #[inline(always)]
-//     unsafe fn exc_unlock(&self) {
-//         L::exc_unlock(self)
-//     }
+        unsafe impl<$L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for $type {
+            unsafe fn exc_split(&self) {
+                L::exc_split(self)
+            }
+        }
 
-//     #[inline(always)]
-//     unsafe fn exc_bump(&self) {
-//         L::exc_bump(self)
-//     }
-// }
+        unsafe impl<$L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for $type {
+            unsafe fn exc_unlock_fair(&self) {
+                L::exc_unlock_fair(self)
+            }
 
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Box<L> {
-//     #[inline(always)]
-//     fn exc_lock(&self) {
-//         L::exc_lock(self)
-//     }
+            unsafe fn exc_bump_fair(&self) {
+                L::exc_bump_fair(self)
+            }
+        }
 
-//     #[inline(always)]
-//     fn exc_try_lock(&self) -> bool {
-//         L::exc_try_lock(self)
-//     }
+        unsafe impl<$L: ?Sized + RawExclusiveLockDowngrade> RawExclusiveLockDowngrade for $type {
+            unsafe fn downgrade(&self) {
+                L::downgrade(self)
+            }
+        }
 
-//     #[inline(always)]
-//     unsafe fn exc_unlock(&self) {
-//         L::exc_unlock(self)
-//     }
+    )*};
+}
 
-//     #[inline(always)]
-//     unsafe fn exc_bump(&self) {
-//         L::exc_bump(self)
-//     }
-// }
+trait_impls! {
+    L => &L, &mut L
+}
 
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Arc<L> {
-//     #[inline(always)]
-//     fn exc_lock(&self) {
-//         L::exc_lock(self)
-//     }
-
-//     #[inline(always)]
-//     fn exc_try_lock(&self) -> bool {
-//         L::exc_try_lock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_unlock(&self) {
-//         L::exc_unlock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump(&self) {
-//         L::exc_bump(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawExclusiveLock> RawExclusiveLock for crate::alloc_prelude::Rc<L> {
-//     #[inline(always)]
-//     fn exc_lock(&self) {
-//         L::exc_lock(self)
-//     }
-
-//     #[inline(always)]
-//     fn exc_try_lock(&self) -> bool {
-//         L::exc_try_lock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_unlock(&self) {
-//         L::exc_unlock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump(&self) {
-//         L::exc_bump(self)
-//     }
-// }
-
-// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &L {
-//     #[inline(always)]
-//     unsafe fn exc_unlock_fair(&self) {
-//         L::exc_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump_fair(&self) {
-//         L::exc_bump_fair(self)
-//     }
-// }
-
-// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for &mut L {
-//     #[inline(always)]
-//     unsafe fn exc_unlock_fair(&self) {
-//         L::exc_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump_fair(&self) {
-//         L::exc_bump_fair(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
-//     for crate::alloc_prelude::Box<L>
-// {
-//     #[inline(always)]
-//     unsafe fn exc_unlock_fair(&self) {
-//         L::exc_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump_fair(&self) {
-//         L::exc_bump_fair(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair
-//     for crate::alloc_prelude::Arc<L>
-// {
-//     #[inline(always)]
-//     unsafe fn exc_unlock_fair(&self) {
-//         L::exc_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump_fair(&self) {
-//         L::exc_bump_fair(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawExclusiveLockFair> RawExclusiveLockFair for crate::alloc_prelude::Rc<L> {
-//     #[inline(always)]
-//     unsafe fn exc_unlock_fair(&self) {
-//         L::exc_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn exc_bump_fair(&self) {
-//         L::exc_bump_fair(self)
-//     }
-// }
-
-// unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &L {
-//     unsafe fn exc_split(&self) {
-//         L::exc_split(self)
-//     }
-// }
-
-// unsafe impl<L: ?Sized + SplittableExclusiveLock> SplittableExclusiveLock for &mut L {
-//     unsafe fn exc_split(&self) {
-//         L::exc_split(self)
-//     }
-// }
+#[cfg(any(feature = "std", feature = "alloc"))]
+trait_impls! {
+    L => std::boxed::Box<L>, std::rc::Rc<L>, std::sync::Arc<L>
+}

@@ -1,6 +1,6 @@
 //! a type safe implementation of a `RwLock`
 
-use std::cell::UnsafeCell;
+use core::cell::UnsafeCell;
 
 use crate::exclusive_lock::{ExclusiveGuard, RawExclusiveLockTimed};
 use crate::share_lock::{RawShareLock, RawShareLockTimed, ShareGuard};
@@ -158,7 +158,7 @@ where
         &'s self,
         raw: crate::exclusive_lock::RawExclusiveGuard<'s, L>,
     ) -> ExclusiveGuard<'s, L, T> {
-        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        assert!(core::ptr::eq(self.raw.inner(), raw.inner()));
         unsafe { ExclusiveGuard::from_raw_parts(raw, self.value.get()) }
     }
 
@@ -167,7 +167,7 @@ where
         &'s self,
         raw: crate::share_lock::RawShareGuard<'s, L>,
     ) -> ShareGuard<'s, L, T> {
-        assert!(std::ptr::eq(self.raw.inner(), raw.inner()));
+        assert!(core::ptr::eq(self.raw.inner(), raw.inner()));
         unsafe { ShareGuard::from_raw_parts(raw, self.value.get()) }
     }
 
@@ -273,3 +273,13 @@ where
         Some(self.wrap_read(self.raw.try_read_for(duration)?))
     }
 }
+
+unsafe impl<L: ?Sized + RawRwLock> RawRwLock for &L {}
+unsafe impl<L: ?Sized + RawRwLock> RawRwLock for &mut L {}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawRwLock> RawRwLock for std::boxed::Box<L> {}
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawRwLock> RawRwLock for std::rc::Rc<L> {}
+#[cfg(any(feature = "std", feature = "alloc"))]
+unsafe impl<L: ?Sized + RawRwLock> RawRwLock for std::sync::Arc<L> {}

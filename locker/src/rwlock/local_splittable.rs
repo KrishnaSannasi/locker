@@ -1,6 +1,6 @@
 //! a local (single-threaded) splittable rwlock lock
 
-use std::cell::Cell;
+use core::cell::Cell;
 
 const EXC_BIT: usize = 0b01;
 const INC: usize = 0b10;

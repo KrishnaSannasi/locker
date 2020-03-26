@@ -2,7 +2,7 @@
 
 use crate::spin_wait::SpinWait;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// a splittable spin raw mutex
 ///

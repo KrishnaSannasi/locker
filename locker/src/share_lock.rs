@@ -232,203 +232,77 @@ pub unsafe trait RawShareLockUpgradeTimed: RawShareLockUpgrade + RawShareLockTim
     unsafe fn try_upgrade_for(&self, duration: Self::Duration) -> bool;
 }
 
-// unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &L {
-//     #[inline(always)]
-//     fn shr_lock(&self) {
-//         L::shr_lock(self)
-//     }
+macro_rules! trait_impls {
+    ($L:ident => $($type:ty),*) => {$(
+        unsafe impl<$L: ?Sized + RawShareLock> RawShareLock for $type {
+            fn shr_lock(&self) {
+                L::shr_lock(self)
+            }
 
-//     #[inline(always)]
-//     fn shr_try_lock(&self) -> bool {
-//         L::shr_try_lock(self)
-//     }
+            fn shr_try_lock(&self) -> bool {
+                L::shr_try_lock(self)
+            }
 
-//     #[inline(always)]
-//     unsafe fn shr_split(&self) {
-//         L::shr_split(self)
-//     }
+            unsafe fn shr_split(&self) {
+                L::shr_split(self)
+            }
 
-//     #[inline(always)]
-//     unsafe fn shr_unlock(&self) {
-//         L::shr_unlock(self)
-//     }
+            unsafe fn shr_unlock(&self) {
+                L::shr_unlock(self)
+            }
 
-//     #[inline(always)]
-//     unsafe fn shr_bump(&self) {
-//         L::shr_bump(self)
-//     }
-// }
+            unsafe fn shr_bump(&self) {
+                L::shr_bump(self)
+            }
+        }
 
-// unsafe impl<L: ?Sized + RawShareLock> RawShareLock for &mut L {
-//     #[inline(always)]
-//     fn shr_lock(&self) {
-//         L::shr_lock(self)
-//     }
+        unsafe impl<$L: ?Sized + RawShareLockTimed> RawShareLockTimed for $type {
+            fn shr_try_lock_until(&self, instant: Self::Instant) -> bool {
+                L::shr_try_lock_until(self, instant)
+            }
 
-//     #[inline(always)]
-//     fn shr_try_lock(&self) -> bool {
-//         L::shr_try_lock(self)
-//     }
+            fn shr_try_lock_for(&self, duration: Self::Duration) -> bool {
+                L::shr_try_lock_for(self, duration)
+            }
+        }
 
-//     #[inline(always)]
-//     unsafe fn shr_split(&self) {
-//         L::shr_split(self)
-//     }
+        unsafe impl<$L: ?Sized + RawShareLockFair> RawShareLockFair for $type {
+            unsafe fn shr_unlock_fair(&self) {
+                L::shr_unlock_fair(self)
+            }
 
-//     #[inline(always)]
-//     unsafe fn shr_unlock(&self) {
-//         L::shr_unlock(self)
-//     }
+            unsafe fn shr_bump_fair(&self) {
+                L::shr_bump_fair(self)
+            }
+        }
 
-//     #[inline(always)]
-//     unsafe fn shr_bump(&self) {
-//         L::shr_bump(self)
-//     }
-// }
+        unsafe impl<$L: ?Sized + RawShareLockUpgrade> RawShareLockUpgrade for $type {
+            unsafe fn upgrade(&self) {
+                L::upgrade(self)
+            }
 
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Box<L> {
-//     #[inline(always)]
-//     fn shr_lock(&self) {
-//         L::shr_lock(self)
-//     }
+            unsafe fn try_upgrade(&self) -> bool {
+                L::try_upgrade(self)
+            }
+        }
 
-//     #[inline(always)]
-//     fn shr_try_lock(&self) -> bool {
-//         L::shr_try_lock(self)
-//     }
+        unsafe impl<$L: ?Sized + RawShareLockUpgradeTimed> RawShareLockUpgradeTimed for $type {
+            unsafe fn try_upgrade_until(&self, instant: Self::Instant) -> bool {
+                L::try_upgrade_until(self, instant)
+            }
 
-//     #[inline(always)]
-//     unsafe fn shr_split(&self) {
-//         L::shr_split(self)
-//     }
+            unsafe fn try_upgrade_for(&self, duration: Self::Duration) -> bool {
+                L::try_upgrade_for(self, duration)
+            }
+        }
+    )*};
+}
 
-//     #[inline(always)]
-//     unsafe fn shr_unlock(&self) {
-//         L::shr_unlock(self)
-//     }
+trait_impls! {
+    L => &L, &mut L
+}
 
-//     #[inline(always)]
-//     unsafe fn shr_bump(&self) {
-//         L::shr_bump(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Arc<L> {
-//     #[inline(always)]
-//     fn shr_lock(&self) {
-//         L::shr_lock(self)
-//     }
-
-//     #[inline(always)]
-//     fn shr_try_lock(&self) -> bool {
-//         L::shr_try_lock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_split(&self) {
-//         L::shr_split(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_unlock(&self) {
-//         L::shr_unlock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump(&self) {
-//         L::shr_bump(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawShareLock> RawShareLock for crate::alloc_prelude::Rc<L> {
-//     #[inline(always)]
-//     fn shr_lock(&self) {
-//         L::shr_lock(self)
-//     }
-
-//     #[inline(always)]
-//     fn shr_try_lock(&self) -> bool {
-//         L::shr_try_lock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_split(&self) {
-//         L::shr_split(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_unlock(&self) {
-//         L::shr_unlock(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump(&self) {
-//         L::shr_bump(self)
-//     }
-// }
-
-// unsafe impl<L: ?Sized + RawShareLockFair> RawShareLockFair for &L {
-//     #[inline(always)]
-//     unsafe fn shr_unlock_fair(&self) {
-//         L::shr_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump_fair(&self) {
-//         L::shr_bump_fair(self)
-//     }
-// }
-
-// unsafe impl<L: ?Sized + RawShareLockFair> RawShareLockFair for &mut L {
-//     #[inline(always)]
-//     unsafe fn shr_unlock_fair(&self) {
-//         L::shr_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump_fair(&self) {
-//         L::shr_bump_fair(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawShareLockFair> RawShareLockFair for crate::alloc_prelude::Box<L> {
-//     #[inline(always)]
-//     unsafe fn shr_unlock_fair(&self) {
-//         L::shr_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump_fair(&self) {
-//         L::shr_bump_fair(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawShareLockFair> RawShareLockFair for crate::alloc_prelude::Arc<L> {
-//     #[inline(always)]
-//     unsafe fn shr_unlock_fair(&self) {
-//         L::shr_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump_fair(&self) {
-//         L::shr_bump_fair(self)
-//     }
-// }
-
-// #[cfg(any(feature = "std", feature = "alloc"))]
-// unsafe impl<L: ?Sized + RawShareLockFair> RawShareLockFair for crate::alloc_prelude::Rc<L> {
-//     #[inline(always)]
-//     unsafe fn shr_unlock_fair(&self) {
-//         L::shr_unlock_fair(self)
-//     }
-
-//     #[inline(always)]
-//     unsafe fn shr_bump_fair(&self) {
-//         L::shr_bump_fair(self)
-//     }
-// }
+#[cfg(any(feature = "std", feature = "alloc"))]
+trait_impls! {
+    L => std::boxed::Box<L>, std::rc::Rc<L>, std::sync::Arc<L>
+}

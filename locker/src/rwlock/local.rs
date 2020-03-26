@@ -1,6 +1,6 @@
 //! a local (single-threaded) rwlock lock
 
-use std::cell::Cell;
+use core::cell::Cell;
 
 const EXC_LOCK: usize = !0;
 
