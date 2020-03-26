@@ -3,13 +3,7 @@
 members = [
     'async-locker',
     'locker',
-
-    # 'core-condvar',
-    # 'core-waiter',
-
-    # 'impl-mutex',
-
-    # 'main'
+    'thread-local',
 ]
 
 [profile.dev]
