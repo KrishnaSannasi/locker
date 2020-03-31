@@ -5,3 +5,6 @@ pub use always_fair::Fair;
 
 mod reentrant_panic;
 pub use reentrant_panic::ReentrantPanic;
+
+mod debug_checked;
+pub use debug_checked::DebugChecked;

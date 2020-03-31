@@ -78,8 +78,7 @@ mod defer;
 pub mod exclusive_lock;
 pub mod mutex;
 #[allow(missing_docs)]
-pub mod once; // 68
-              // #[allow(missing_docs)]
+pub mod once;
 pub mod remutex;
 pub mod rwlock;
 pub mod share_lock;
