@@ -114,6 +114,7 @@ impl<
         St,
     > ExclusiveGuard<'a, L, W, T, St>
 {
+    #[allow(clippy::type_complexity)]
     pub fn split_map<U: ?Sized, V: ?Sized>(
         self,
         f: impl FnOnce(&mut T) -> (&mut U, &mut V),

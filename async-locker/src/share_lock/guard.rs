@@ -98,6 +98,7 @@ impl<'a, L: RawShareLock + RawLockInfo, W: WakerSet + ?Sized, T: ?Sized, St>
 impl<'a, L: RawShareLock + RawLockInfo, W: WakerSet + ?Sized, T: ?Sized, St>
     ShareGuard<'a, L, W, T, St>
 {
+    #[allow(clippy::type_complexity)]
     pub fn split_map<U: ?Sized, V: ?Sized>(
         self,
         f: impl FnOnce(&T) -> (&U, &V),

@@ -1,7 +1,7 @@
 //! A common utility for building synchronization primitives.
 //!
 //! When an async operation is blocked, it needs to register itself somewhere so that it can be
-//! notified later on. The `WakerSet` type helps with keeping track of such async operations and
+//! notified later on. The `AsyncStdWakerSet` type helps with keeping track of such async operations and
 //! notifying them when they may make progress.
 
 use std::ops::{Deref, DerefMut};
@@ -20,13 +20,13 @@ const NOTIFIED: u8 = 0b01;
 /// Set when there is at least one notifiable entry.
 const NOTIFIABLE: u8 = 0b10;
 
-/// Inner representation of `WakerSet`.
+/// Inner representation of `AsyncStdWakerSet`.
 struct Inner {
     /// A list of entries in the set.
     ///
     /// Each entry has an optional waker associated with the task that is executing the operation.
     /// If the waker is set to `None`, that means the task has been woken up but hasn't removed
-    /// itself from the `WakerSet` yet.
+    /// itself from the `AsyncStdWakerSet` yet.
     ///
     /// The key of each entry is its index in the `Slab`.
     entries: Slab<Option<Waker>>,
@@ -36,16 +36,16 @@ struct Inner {
 }
 
 /// A set holding wakers.
-pub struct WakerSet {
+pub struct AsyncStdWakerSet {
     /// Holds 2 bits: `NOTIFY_ONE`, and `NOTIFY_ALL`.
     inner: Mutex<Inner>,
 }
 
-impl WakerSet {
-    /// Creates a new `WakerSet`.
+impl AsyncStdWakerSet {
+    /// Creates a new `AsyncStdWakerSet`.
     #[inline]
-    pub const fn new() -> WakerSet {
-        WakerSet {
+    pub const fn new() -> AsyncStdWakerSet {
+        AsyncStdWakerSet {
             inner: TaggedDefaultLock::mutex(Inner {
                 entries: Slab::new(),
                 notifiable: 0,
@@ -53,94 +53,9 @@ impl WakerSet {
         }
     }
 
-    /// Inserts a waker for a blocked operation and returns a key associated with it.
-    #[cold]
-    pub fn insert(&self, cx: &Context<'_>) -> Index {
-        let w = cx.waker().clone();
-        let mut inner = self.lock();
-
-        let key = inner.entries.insert(Some(w));
-        inner.notifiable += 1;
-        key
-    }
-
-    /// Removes the waker of an operation.
-    #[cold]
-    pub fn remove(&self, key: Index) {
-        let mut inner = self.lock();
-
-        if inner.entries.remove(key).is_some() {
-            inner.notifiable -= 1;
-        }
-    }
-
-    /// Removes the waker of a cancelled operation.
-    ///
-    /// Returns `true` if another blocked operation from the set was notified.
-    #[cold]
-    pub fn cancel(&self, key: Index) -> bool {
-        let mut inner = self.lock();
-
-        match inner.entries.remove(key) {
-            Some(_) => inner.notifiable -= 1,
-            None => {
-                // The operation was cancelled and notified so notify another operation instead.
-                for (_, opt_waker) in inner.entries.iter_mut() {
-                    // If there is no waker in this entry, that means it was already woken.
-                    if let Some(w) = opt_waker.take() {
-                        w.wake();
-                        inner.notifiable -= 1;
-                        return true;
-                    }
-                }
-            }
-        }
-
-        false
-    }
-
     fn flag(&self) -> u8 {
         // Use `Acquire` ordering to synchronize with `Lock::drop()`.
         self.inner.raw().inner().tag(Ordering::Acquire)
-    }
-
-    /// Notifies a blocked operation if none have been notified already.
-    ///
-    /// Returns `true` if an operation was notified.
-    #[inline]
-    pub fn notify_any(&self) -> bool {
-        let flag = self.flag();
-
-        if flag & NOTIFIED == 0 && flag & NOTIFIABLE != 0 {
-            self.notify(Notify::Any)
-        } else {
-            false
-        }
-    }
-
-    /// Notifies one additional blocked operation.
-    ///
-    /// Returns `true` if an operation was notified.
-    #[inline]
-    #[cfg(feature = "unstable")]
-    pub fn notify_one(&self) -> bool {
-        if self.flag() & NOTIFIABLE != 0 {
-            self.notify(Notify::One)
-        } else {
-            false
-        }
-    }
-
-    /// Notifies all blocked operations.
-    ///
-    /// Returns `true` if at least one operation was notified.
-    #[inline]
-    pub fn notify_all(&self) -> bool {
-        if self.flag() & NOTIFIABLE != 0 {
-            self.notify(Notify::All)
-        } else {
-            false
-        }
     }
 
     /// Notifies blocked operations, either one or all of them.
@@ -179,7 +94,87 @@ impl WakerSet {
     }
 }
 
-/// A guard holding a `WakerSet` locked.
+impl crate::WakerSet for AsyncStdWakerSet {
+    type Index = Index;
+
+    fn is_empty(&self) -> bool {
+        self.inner.lock().entries.is_empty()
+    }
+
+    /// Inserts a waker for a blocked operation and returns a key associated with it.
+    #[cold]
+    fn insert(&self, cx: &mut Context<'_>) -> Index {
+        let w = cx.waker().clone();
+        let mut inner = self.lock();
+
+        let key = inner.entries.insert(Some(w));
+        inner.notifiable += 1;
+        key
+    }
+
+    /// Removes the waker of an operation.
+    #[cold]
+    fn remove(&self, key: Index) {
+        let mut inner = self.lock();
+
+        if inner.entries.remove(key).is_some() {
+            inner.notifiable -= 1;
+        }
+    }
+
+    /// Removes the waker of a cancelled operation.
+    ///
+    /// Returns `true` if another blocked operation from the set was notified.
+    #[cold]
+    fn cancel(&self, key: Index) -> bool {
+        let mut inner = self.lock();
+
+        match inner.entries.remove(key) {
+            Some(_) => inner.notifiable -= 1,
+            None => {
+                // The operation was cancelled and notified so notify another operation instead.
+                for (_, opt_waker) in inner.entries.iter_mut() {
+                    // If there is no waker in this entry, that means it was already woken.
+                    if let Some(w) = opt_waker.take() {
+                        w.wake();
+                        inner.notifiable -= 1;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Notifies a blocked operation if none have been notified already.
+    ///
+    /// Returns `true` if an operation was notified.
+    #[inline]
+    fn notify_any(&self) -> bool {
+        let flag = self.flag();
+
+        if flag & NOTIFIED == 0 && flag & NOTIFIABLE != 0 {
+            self.notify(Notify::Any)
+        } else {
+            false
+        }
+    }
+
+    /// Notifies all blocked operations.
+    ///
+    /// Returns `true` if at least one operation was notified.
+    #[inline]
+    fn notify_all(&self) -> bool {
+        if self.flag() & NOTIFIABLE != 0 {
+            self.notify(Notify::All)
+        } else {
+            false
+        }
+    }
+}
+
+/// A guard holding a `AsyncStdWakerSet` locked.
 struct Lock<'a> {
     waker_set: locker::exclusive_lock::ExclusiveGuard<'a, TaggedDefaultLock, Inner>,
 }
