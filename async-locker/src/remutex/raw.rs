@@ -1,34 +1,33 @@
 use super::RawReentrantMutex;
-use crate::{share_lock::RawShareGuard, waker_set::WakerSet};
+use crate::{share_lock::RawShareGuard, WakerSet};
 use locker::remutex::raw;
 
 #[repr(C)]
-pub struct ReentrantMutex<L> {
+pub struct ReentrantMutex<L, W> {
     raw: raw::ReentrantMutex<L>,
-    waker_set: WakerSet,
+    waker_set: W,
 }
 
-impl<L: RawReentrantMutex + locker::Init> Default for ReentrantMutex<L> {
+impl<L: RawReentrantMutex + locker::Init, W: WakerSet + locker::Init> Default
+    for ReentrantMutex<L, W>
+{
     #[inline]
     fn default() -> Self {
         locker::Init::INIT
     }
 }
 
-impl<L> ReentrantMutex<L> {
+impl<L, W> ReentrantMutex<L, W> {
     /// # Safety
     ///
     /// You must pass `RawLockInfo::INIT` as lock
     #[inline]
-    pub const unsafe fn from_raw(raw: raw::ReentrantMutex<L>) -> Self {
-        Self {
-            raw,
-            waker_set: WakerSet::new(),
-        }
+    pub const unsafe fn from_raw_parts(raw: raw::ReentrantMutex<L>, waker_set: W) -> Self {
+        Self { raw, waker_set }
     }
 
     #[inline]
-    pub fn into_raw_parts(self) -> (raw::ReentrantMutex<L>, WakerSet) {
+    pub fn into_raw_parts(self) -> (raw::ReentrantMutex<L>, W) {
         (self.raw, self.waker_set)
     }
 
@@ -52,11 +51,13 @@ impl<L> ReentrantMutex<L> {
     }
 }
 
-impl<L: RawReentrantMutex + locker::Init> locker::Init for ReentrantMutex<L> {
-    const INIT: Self = unsafe { Self::from_raw(locker::Init::INIT) };
+impl<L: RawReentrantMutex + locker::Init, W: WakerSet + locker::Init> locker::Init
+    for ReentrantMutex<L, W>
+{
+    const INIT: Self = unsafe { Self::from_raw_parts(locker::Init::INIT, locker::Init::INIT) };
 }
 
-impl<L: RawReentrantMutex + locker::Init> ReentrantMutex<L> {
+impl<L: RawReentrantMutex + locker::Init, W: WakerSet + locker::Init> ReentrantMutex<L, W> {
     cfg_if::cfg_if! {
         if #[cfg(feature = "nightly")] {
             #[inline]
@@ -72,24 +73,22 @@ impl<L: RawReentrantMutex + locker::Init> ReentrantMutex<L> {
     }
 }
 
-impl<L: RawReentrantMutex> ReentrantMutex<L>
+impl<L: RawReentrantMutex, W: WakerSet> ReentrantMutex<L, W>
 where
     L::ShareGuardTraits: locker::marker::Inhabitted,
 {
     #[inline]
-    pub async fn lock(&self) -> RawShareGuard<'_, L> {
-        use crate::slab::Index;
-
-        pub struct LockFuture<'a, L>(&'a ReentrantMutex<L>, Option<Index>);
+    pub async fn lock(&self) -> RawShareGuard<'_, L, W> {
+        pub struct LockFuture<'a, L, W, I>(&'a ReentrantMutex<L, W>, Option<I>);
 
         use std::pin::Pin;
         use std::task::{Context, Poll};
 
-        impl<'a, L: RawReentrantMutex> std::future::Future for LockFuture<'a, L>
+        impl<'a, L: RawReentrantMutex, W: WakerSet> std::future::Future for LockFuture<'a, L, W, W::Index>
         where
             L::ShareGuardTraits: locker::marker::Inhabitted,
         {
-            type Output = RawShareGuard<'a, L>;
+            type Output = RawShareGuard<'a, L, W>;
 
             fn poll(self: Pin<&mut Self>, ctx: &mut Context) -> Poll<Self::Output> {
                 let Self(rwlock, opt_key) = Pin::into_inner(self);
@@ -120,7 +119,7 @@ where
     }
 
     #[inline]
-    pub fn try_lock(&self) -> Option<RawShareGuard<'_, L>> {
+    pub fn try_lock(&self) -> Option<RawShareGuard<'_, L, W>> {
         Some(RawShareGuard::from_raw_parts(
             self.raw.try_lock()?,
             &self.waker_set,
