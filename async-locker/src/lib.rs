@@ -11,6 +11,7 @@ macro_rules! defer {
 pub mod async_std;
 mod defer;
 pub mod exclusive_lock;
+pub mod local_async_std;
 pub mod mutex;
 pub mod remutex;
 pub mod rwlock;
